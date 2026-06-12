@@ -208,10 +208,21 @@ with tab2:
             P_rc = st.number_input("น้ำหนักกระทำจุดกึ่งกลาง P (kg)", min_value=1.0, value=6000.0, step=100.0, key="P_rc")
             
     with c4:
-        steel_dict = {"เหล็กข้ออ้อย SD30": 1200.0, "เหล็กข้ออ้อย SD40": 1500.0}
-        fs = steel_dict[st.selectbox("เหล็กเสริมหลัก", list(steel_dict.keys()), key="steel_rc")]
-        j_val = 0.875
-        st.info("ความหนาแน่นคอนกรีต: **2,400 kg/m³** | โมดูลัสยืดหยุ่น (E): **~200,000 kg/cm²**")
+        # ฐานข้อมูลเหล็กเสริมตามมาตรฐาน วสท. (วิธี WSD)
+        # ค่าใน Dict คือ Allowable Tensile Stress (fs) ในหน่วย kg/cm²
+        steel_dict = {
+            "เหล็กเส้นกลม SR24 (ผิวเรียบ)": 1200.0,
+            "เหล็กข้ออ้อย SD30": 1500.0,
+            "เหล็กข้ออ้อย SD40": 1700.0,
+            "เหล็กข้ออ้อย SD50 (กำลังสูง)": 1700.0
+        }
+        selected_steel = st.selectbox("ชั้นคุณภาพเหล็กเสริมหลัก", list(steel_dict.keys()), key="steel_rc")
+        fs = steel_dict[selected_steel]
+        
+        # ค่า j ประมาณ 0.875 สำหรับการประเมินเบื้องต้น
+        j_val = 0.875 
+        
+        st.info(f"หน่วยแรงดึงเหล็ก (fs): **{fs:,.0f} kg/cm²**\n\nความหนาแน่นคอนกรีต: **2,400 kg/m³** | โมดูลัส (E): **~200,000 kg/cm²**")
 
     if st.button("🚀 ประเมินหน้าตัดและเหล็กเสริม (RC)", type="primary", key="btn_rc"):
         
