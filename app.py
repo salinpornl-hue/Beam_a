@@ -132,7 +132,7 @@ with tab2:
         
         st.subheader("ขั้นที่ 2: ประมาณการขนาดหน้าตัด (Rule of Thumb)")
         st.markdown("กำหนดความลึก ($h$) ประมาณ $L/10$ ถึง $L/12$ และความกว้าง ($b$) ประมาณ $h/2$")
-        st.latex(rf"h \approx \frac{{{L_rc \times 100}}}{{10}} = {h_est_raw:.2f} \text{{ cm}} \rightarrow \text{{เลือกใช้ }} {h_rc} \text{{ cm}}")
+        st.latex(rf"h \approx \frac{{{L_rc} \times 100}}{{10}} = {h_est_raw:.2f} \text{{ cm}} \rightarrow \text{{เลือกใช้ }} {h_rc} \text{{ cm}}")
         st.latex(rf"b \approx \frac{{{h_rc}}}{{2}} = {b_est_raw:.2f} \text{{ cm}} \rightarrow \text{{เลือกใช้ }} {b_rc} \text{{ cm}}")
         st.latex(rf"d = h - 5 = {h_rc} - 5 = {d_rc} \text{{ cm}}")
         
