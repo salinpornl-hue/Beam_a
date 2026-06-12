@@ -303,8 +303,6 @@ with tab2:
             cr1.plotly_chart(fig_v_rc, use_container_width=True)
             cr2.plotly_chart(fig_m_rc, use_container_width=True)
 
-            # ================= รายการคำนวณ (Tab 2) =================
-            with st.expander("📝 ดูรายการคำนวณ: การหาความลึกขั้นต่ำ และปริมาณเหล็ก"):
                 # ================= รายการคำนวณ (Tab 2) =================
             with st.expander("📝 ดูรายการคำนวณ: การหาความลึกขั้นต่ำ และปริมาณเหล็ก"):
                 st.markdown("### 📌 ขั้นตอนที่ 1: หาความลึกขั้นต่ำของคอนกรีต (Minimum Required Section)")
