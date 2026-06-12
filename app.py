@@ -7,7 +7,7 @@ import math
 st.set_page_config(page_title="Beam Design Calculator", page_icon="🏗️", layout="wide")
 
 st.title("🏗️ โปรแกรมออกแบบขนาดคานเบื้องต้น")
-st.markdown("โปรแกรมคำนวณหน้าตัดคานช่วงเดียว (Simply Supported Beam) รองรับทั้งวัสดุเหล็ก/ไม้ และคอนกรีตเสริมเหล็ก")
+st.markdown("รองรับการคำนวณน้ำหนักแบบแผ่กระจาย (Uniform Load) และแบบจุด (Point Load)")
 st.divider()
 
 # สร้าง Tabs สำหรับแยกประเภทคาน
@@ -22,8 +22,14 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         L_homo = st.number_input("ความยาวช่วงคาน L (เมตร)", min_value=0.1, value=4.0, step=0.5, key="L_homo")
-        w_homo = st.number_input("น้ำหนักบรรทุกแผ่กระจาย w (kg/m)", min_value=1.0, value=500.0, step=50.0, key="w_homo")
-    
+        
+        # เลือกประเภทน้ำหนักบรรทุก
+        load_type_homo = st.radio("รูปแบบน้ำหนักบรรทุก", ["น้ำหนักแผ่กระจาย (Uniform Load)", "น้ำหนักกระทำเป็นจุดกึ่งกลาง (Point Load)"], key="load_homo")
+        if "Uniform" in load_type_homo:
+            val_load_homo = st.number_input("น้ำหนักแผ่กระจาย w (kg/m)", min_value=1.0, value=500.0, step=50.0, key="w_homo")
+        else:
+            val_load_homo = st.number_input("น้ำหนักกระทำจุดกึ่งกลาง P (kg)", min_value=1.0, value=2000.0, step=100.0, key="P_homo")
+            
     with col2:
         material_dict = {
             "เหล็กรูปพรรณ (SS400)": 1200.0,
@@ -43,7 +49,12 @@ with tab1:
         ratio = st.number_input("สัดส่วน ความลึก ต่อ ความกว้าง (h/b)", min_value=1.0, value=2.0, step=0.5, key="ratio_homo")
 
     if st.button("🚀 คำนวณหน้าตัดเหล็ก/ไม้", type="primary", key="btn_homo"):
-        M_max = (w_homo * L_homo**2) / 8
+        # คำนวณโมเมนต์ตามประเภทน้ำหนัก
+        if "Uniform" in load_type_homo:
+            M_max = (val_load_homo * L_homo**2) / 8
+        else:
+            M_max = (val_load_homo * L_homo) / 4
+            
         M_max_cm = M_max * 100
         S_req = M_max_cm / sigma_allow
         
@@ -60,8 +71,15 @@ with tab1:
         
         st.divider()
         st.header("📖 3. วิธีการคำนวณ (Step-by-Step)")
-        st.latex(r"M_{max} = \frac{w \cdot L^2}{8}")
-        st.latex(rf"M_{{max}} = \frac{{{w_homo} \cdot {L_homo}^2}}{{8}} = {M_max:,.2f} \text{{ kg-m}} \rightarrow {M_max_cm:,.2f} \text{{ kg-cm}}")
+        
+        if "Uniform" in load_type_homo:
+            st.latex(r"M_{max} = \frac{w \cdot L^2}{8}")
+            st.latex(rf"M_{{max}} = \frac{{{val_load_homo} \cdot {L_homo}^2}}{{8}} = {M_max:,.2f} \text{{ kg-m}}")
+        else:
+            st.latex(r"M_{max} = \frac{P \cdot L}{4}")
+            st.latex(rf"M_{{max}} = \frac{{{val_load_homo} \cdot {L_homo}}}{{4}} = {M_max:,.2f} \text{{ kg-m}}")
+            
+        st.latex(rf"\rightarrow {M_max_cm:,.2f} \text{{ kg-cm}}")
         st.latex(r"S_{req} = \frac{M_{max}}{\sigma_{allow}}")
         st.latex(rf"S_{{req}} = \frac{{{M_max_cm:,.2f}}}{{{sigma_allow}}} = {S_req:,.2f} \text{{ cm}}^3")
         st.latex(r"b = \sqrt[3]{\frac{S_{req} \cdot 6}{(h/b)^2}}")
@@ -77,7 +95,13 @@ with tab2:
     col3, col4 = st.columns(2)
     with col3:
         L_rc = st.number_input("ความยาวช่วงคาน L (เมตร)", min_value=0.1, value=4.0, step=0.5, key="L_rc")
-        w_rc = st.number_input("น้ำหนักบรรทุกแผ่กระจายรวม w (kg/m)", min_value=1.0, value=1500.0, step=100.0, key="w_rc")
+        
+        # เลือกประเภทน้ำหนักบรรทุก
+        load_type_rc = st.radio("รูปแบบน้ำหนักบรรทุก", ["น้ำหนักแผ่กระจาย (Uniform Load)", "น้ำหนักกระทำเป็นจุดกึ่งกลาง (Point Load)"], key="load_rc")
+        if "Uniform" in load_type_rc:
+            val_load_rc = st.number_input("น้ำหนักแผ่กระจายรวม w (kg/m)", min_value=1.0, value=1500.0, step=100.0, key="w_rc")
+        else:
+            val_load_rc = st.number_input("น้ำหนักกระทำจุดกึ่งกลาง P (kg)", min_value=1.0, value=6000.0, step=100.0, key="P_rc")
     
     with col4:
         steel_dict = {
@@ -90,24 +114,22 @@ with tab2:
         j_val = st.number_input("สัมประสิทธิ์แขนโมเมนต์ (j)", min_value=0.8, max_value=0.9, value=0.875, step=0.005, help="แนะนำ 0.875 สำหรับ WSD")
 
     if st.button("🚀 ประเมินขนาดคานและเหล็กเสริม", type="primary", key="btn_rc"):
-        # 1. หาโมเมนต์
-        M_rc = (w_rc * L_rc**2) / 8
+        # คำนวณโมเมนต์ตามประเภทน้ำหนัก
+        if "Uniform" in load_type_rc:
+            M_rc = (val_load_rc * L_rc**2) / 8
+        else:
+            M_rc = (val_load_rc * L_rc) / 4
+            
         M_rc_cm = M_rc * 100
         
-        # 2. ประมาณการขนาดหน้าตัด
         h_est_raw = (L_rc * 100) / 10
-        # ปัดความลึกขึ้นให้ลงท้ายด้วย 5 หรือ 0 (เช่น 32 -> 35, 41 -> 45)
         h_rc = math.ceil(h_est_raw / 5.0) * 5 
-        
         b_est_raw = h_rc / 2
-        # ปัดความกว้างขึ้นให้ลงท้ายด้วย 5 หรือ 0
         b_rc = math.ceil(b_est_raw / 5.0) * 5 
         
-        # 3. หาความลึกประสิทธิผล (d) และพื้นที่เหล็ก (As)
         d_rc = h_rc - 5
         As_req = M_rc_cm / (fs * j_val * d_rc)
         
-        # ประมาณการจำนวนเส้นเหล็ก
         n_DB12 = math.ceil(As_req / 1.13)
         n_DB16 = math.ceil(As_req / 2.01)
         n_DB20 = math.ceil(As_req / 3.14)
@@ -128,17 +150,20 @@ with tab2:
         st.header("📖 3. วิธีการคำนวณ WSD (Step-by-Step)")
         
         st.subheader("ขั้นที่ 1: หาโมเมนต์ดัดสูงสุด")
-        st.latex(rf"M_{{max}} = \frac{{{w_rc} \cdot {L_rc}^2}}{{8}} = {M_rc:,.2f} \text{{ kg-m}} \rightarrow {M_rc_cm:,.2f} \text{{ kg-cm}}")
+        if "Uniform" in load_type_rc:
+            st.latex(r"M_{max} = \frac{w \cdot L^2}{8}")
+            st.latex(rf"M_{{max}} = \frac{{{val_load_rc} \cdot {L_rc}^2}}{{8}} = {M_rc:,.2f} \text{{ kg-m}}")
+        else:
+            st.latex(r"M_{max} = \frac{P \cdot L}{4}")
+            st.latex(rf"M_{{max}} = \frac{{{val_load_rc} \cdot {L_rc}}}{{4}} = {M_rc:,.2f} \text{{ kg-m}}")
+            
+        st.latex(rf"\rightarrow {M_rc_cm:,.2f} \text{{ kg-cm}}")
         
         st.subheader("ขั้นที่ 2: ประมาณการขนาดหน้าตัด (Rule of Thumb)")
-        st.markdown("กำหนดความลึก ($h$) ประมาณ $L/10$ ถึง $L/12$ และความกว้าง ($b$) ประมาณ $h/2$")
         st.latex(rf"h \approx \frac{{{L_rc} \times 100}}{{10}} = {h_est_raw:.2f} \text{{ cm}} \rightarrow \text{{เลือกใช้ }} {h_rc} \text{{ cm}}")
         st.latex(rf"b \approx \frac{{{h_rc}}}{{2}} = {b_est_raw:.2f} \text{{ cm}} \rightarrow \text{{เลือกใช้ }} {b_rc} \text{{ cm}}")
         st.latex(rf"d = h - 5 = {h_rc} - 5 = {d_rc} \text{{ cm}}")
         
         st.subheader("ขั้นที่ 3: หาพื้นที่หน้าตัดเหล็กเสริมรับแรงดึง ($A_s$)")
-        st.markdown("จากสมการ Working Stress Design:")
         st.latex(r"A_s = \frac{M_{max}}{f_s \cdot j \cdot d}")
         st.latex(rf"A_s = \frac{{{M_rc_cm:,.2f}}}{{{fs} \cdot {j_val} \cdot {d_rc}}} = {As_req:,.2f} \text{{ cm}}^2")
-        
-        st.warning("⚠️ **ข้อควรระวัง:** การคำนวณนี้เป็นการประเมินปริมาณเหล็กเสริมรับแรงดึงหลักเท่านั้น วิศวกรจำเป็นต้องคำนวณเหล็กปลอก (Stirrups) สำหรับรับแรงเฉือน และตรวจสอบการแอ่นตัวเพิ่มเติม")
