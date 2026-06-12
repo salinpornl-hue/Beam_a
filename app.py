@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Beam Design Pro", page_icon="🏗️", layout="wide")
 
 st.title("🏗️ โปรแกรมออกแบบขนาดคานเบื้องต้น (Pro Version)")
-st.markdown("รองรับการคิดน้ำหนักตัวเอง, ปรับขนาดอัตโนมัติหากแอ่นตัวเกินเกณฑ์, แสดงกราฟ และ **แสดงรายการคำนวณโดยละเอียด**")
+st.markdown("รองรับการคิดน้ำหนักตัวเอง, ปรับขนาดอัตโนมัติหากแอ่นตัวเกินเกณฑ์, แสดงกราฟ และ **แสดงรายการคำนวณแบบ Required vs Provided**")
 st.divider()
 
 def plot_diagrams(L, w_total, P, is_uniform):
@@ -99,8 +99,14 @@ with tab1:
         
         M_self = (w_self_actual * L_homo**2) / 8
         M_total = M_applied + M_self
+        
+        # ตัวแปรสำหรับรายการคำนวณ
+        S_req_val = (M_total * 100) / sigma_allow
         S_provided = (b_final * h_final**2) / 6
-        fb_actual = (M_total * 100) / S_provided
+        if is_uniform_homo:
+            I_req_val = (5 * (w_total_actual / 100) * L_cm**4) / (384 * E_val * delta_allow)
+        else:
+            I_req_val = ((P_homo * L_cm**3) / (48 * E_val * delta_allow)) + ((5 * (w_self_actual / 100) * L_cm**4) / (384 * E_val * delta_allow))
         
         st.divider()
         st.header("📊 2. สรุปผลการประเมินหน้าตัดขั้นสุดท้าย")
@@ -112,7 +118,7 @@ with tab1:
         
         col_r1, col_r2, col_r3 = st.columns(3)
         col_r1.metric("โมเมนต์รวม (M_total)", f"{M_total:,.2f} kg-m")
-        col_r2.metric("หน่วยแรงดัดที่เกิดจริง (fb)", f"{fb_actual:,.2f} kg/cm²", delta=f"ยอมให้ {sigma_allow:,.2f} kg/cm²", delta_color="normal")
+        col_r2.metric("น้ำหนักคานประเมิน", f"{w_self_actual:,.2f} kg/m")
         col_r3.metric("ระยะแอ่นตัวสูงสุด", f"{delta_max:,.3f} cm", delta=f"ยอมให้ {delta_allow:,.3f} cm", delta_color="normal")
             
         st.divider()
@@ -123,28 +129,31 @@ with tab1:
         cp2.plotly_chart(fig_m, use_container_width=True)
 
         # ================= รายการคำนวณ (Tab 1) =================
-        with st.expander("📝 ดูรายการคำนวณโดยละเอียด (Calculation Report)"):
+        with st.expander("📝 ดูรายการคำนวณ (Required vs Provided)"):
             st.markdown("### ขั้นตอนที่ 1: การหาน้ำหนักและโมเมนต์ดัดรวม")
-            st.latex(rf"w_{{self}} = ({b_final}/100) \times ({h_final}/100) \times {density:,.0f} = {w_self_actual:,.2f} \text{{ kg/m}}")
             st.latex(rf"w_{{total}} = w_{{applied}} + w_{{self}} = {val_load_homo} + {w_self_actual:,.2f} = {w_total_actual:,.2f} \text{{ kg/m}}")
+            if is_uniform_homo:
+                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
+            else:
+                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
+
+            st.markdown("---")
+            st.markdown("### ขั้นตอนที่ 2: การหาค่าหน้าตัดขั้นต่ำที่ต้องการ (Required Section Properties)")
+            st.markdown("**1. เพื่อต้านทานโมเมนต์ดัด (Bending):** ต้องมี $S$ มากกว่าหรือเท่ากับ")
+            st.latex(rf"S_{{req}} = \frac{{M_{{max}} \cdot 100}}{{\sigma_{{allow}}}} = \frac{{{M_total:,.2f} \cdot 100}}{{{sigma_allow}}} = {S_req_val:,.2f} \text{{ cm}}^3")
             
+            st.markdown("**2. เพื่อป้องกันการแอ่นตัว (Deflection):** ต้องมี $I$ มากกว่าหรือเท่ากับ")
+            st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
             if is_uniform_homo:
-                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = \frac{{{w_total_actual:,.2f} \cdot {L_homo}^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
+                st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_val:,.2f} \text{{ cm}}^4")
             else:
-                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = \frac{{{P_homo} \cdot {L_homo}}}{{4}} + \frac{{{w_self_actual:,.2f} \cdot {L_homo}^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
+                st.latex(rf"I_{{req}} = \frac{{P \cdot L^3}}{{48 \cdot E \cdot \Delta_{{allow}}}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_val:,.2f} \text{{ cm}}^4")
 
-            st.markdown("### ขั้นตอนที่ 2: ตรวจสอบหน่วยแรงดัด (Bending Stress)")
-            st.latex(rf"S_{{provided}} = \frac{{b \cdot h^2}}{{6}} = \frac{{{b_final} \cdot {h_final}^2}}{{6}} = {S_provided:,.2f} \text{{ cm}}^3")
-            st.latex(rf"f_b = \frac{{M_{{max}} \cdot 100}}{{S_{{provided}}}} = \frac{{{M_total:,.2f} \cdot 100}}{{{S_provided:,.2f}}} = {fb_actual:,.2f} \text{{ kg/cm}}^2 \le {sigma_allow} \text{{ kg/cm}}^2 \text{{ (OK)}}")
-
-            st.markdown("### ขั้นตอนที่ 3: ตรวจสอบการแอ่นตัว (Deflection)")
-            st.latex(rf"I_{{provided}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_final} \cdot {h_final}^3}}{{12}} = {I_val:,.2f} \text{{ cm}}^4")
-            if is_uniform_homo:
-                st.latex(rf"\Delta_{{max}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot I}} = {delta_max:,.3f} \text{{ cm}}")
-            else:
-                st.latex(rf"\Delta_{{max}} = \frac{{P \cdot L^3}}{{48 \cdot E \cdot I}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E \cdot I}} = {delta_max:,.3f} \text{{ cm}}")
-            st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_cm}}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
-            st.markdown(f"**สรุป:** $\Delta_{{max}} \le \Delta_{{allow}}$ (คานปลอดภัยจากการแอ่นตัว)")
+            st.markdown("---")
+            st.markdown("### ขั้นตอนที่ 3: ตรวจสอบขนาดหน้าตัดที่เลือก (Section Check)")
+            st.markdown(f"เลือกใช้หน้าตัด กว้าง **$b = {b_final}$ cm**, ลึก **$h = {h_final}$ cm**")
+            st.latex(rf"S_{{provided}} = \frac{{b \cdot h^2}}{{6}} = {S_provided:,.2f} \text{{ cm}}^3 \ge S_{{req}} \text{{ (OK)}}")
+            st.latex(rf"I_{{provided}} = \frac{{b \cdot h^3}}{{12}} = {I_val:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
 
 # ==========================================
 # TAB 2: คอนกรีตเสริมเหล็ก (RC Beam)
@@ -207,6 +216,12 @@ with tab2:
         n_DB12 = math.ceil(As_req / 1.13)
         n_DB16 = math.ceil(As_req / 2.01)
         
+        # คำนวณ I_req ของ RC
+        if is_uniform_rc:
+            I_req_rc = (5 * (w_total_rc / 100) * L_cm_rc**4) / (384 * E_c * delta_allow_rc)
+        else:
+            I_req_rc = ((P_rc * L_cm_rc**3) / (48 * E_c * delta_allow_rc)) + ((5 * (w_self_rc / 100) * L_cm_rc**4) / (384 * E_c * delta_allow_rc))
+
         st.divider()
         st.header("📊 2. สรุปผลการประเมิน (คาน RC)")
         
@@ -230,26 +245,27 @@ with tab2:
         cr2.plotly_chart(fig_m_rc, use_container_width=True)
 
         # ================= รายการคำนวณ (Tab 2) =================
-        with st.expander("📝 ดูรายการคำนวณโดยละเอียด (Calculation Report)"):
-            st.markdown("### ขั้นตอนที่ 1: การประมาณขนาดหน้าตัดและน้ำหนักคาน")
-            st.latex(rf"w_{{self}} = ({b_rc}/100) \times ({h_rc}/100) \times 2400 = {w_self_rc:,.2f} \text{{ kg/m}}")
+        with st.expander("📝 ดูรายการคำนวณ (Required vs Provided)"):
+            st.markdown("### ขั้นตอนที่ 1: การหาโมเมนต์ดัดสูงสุด (Max Moment)")
             st.latex(rf"w_{{total}} = {val_load_rc} + {w_self_rc:,.2f} = {w_total_rc:,.2f} \text{{ kg/m}}")
-            
-            st.markdown("### ขั้นตอนที่ 2: การหาโมเมนต์ดัดสูงสุด")
             if is_uniform_rc:
-                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = \frac{{{w_total_rc:,.2f} \cdot {L_rc}^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
+                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
             else:
-                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = \frac{{{P_rc} \cdot {L_rc}}}{{4}} + \frac{{{w_self_rc:,.2f} \cdot {L_rc}^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
+                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
 
-            st.markdown("### ขั้นตอนที่ 3: การหาพื้นที่เหล็กเสริม (Working Stress Design)")
+            st.markdown("---")
+            st.markdown("### ขั้นตอนที่ 2: ค่าที่ต้องการขั้นต่ำเพื่อควบคุมการแอ่นตัว (Deflection Control)")
+            st.markdown("จากกฎหมาย ระยะแอ่นตัวยอมให้ $\Delta_{allow} = L/360$ ดังนั้นหน้าตัดคอนกรีตต้องมี $I_{gross}$ ไม่น้อยกว่า:")
+            if is_uniform_rc:
+                st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E_c \cdot \Delta_{{allow}}}} = {I_req_rc:,.2f} \text{{ cm}}^4")
+            else:
+                st.latex(rf"I_{{req}} = \frac{{P \cdot L^3}}{{48 \cdot E_c \cdot \Delta_{{allow}}}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E_c \cdot \Delta_{{allow}}}} = {I_req_rc:,.2f} \text{{ cm}}^4")
+            
+            st.markdown("---")
+            st.markdown("### ขั้นตอนที่ 3: ตรวจสอบหน้าตัดที่เลือก และหาพื้นที่เหล็กเสริม")
+            st.markdown(f"เลือกใช้หน้าตัด กว้าง **$b = {b_rc}$ cm**, ลึก **$h = {h_rc}$ cm**")
+            st.latex(rf"I_{{gross}} = \frac{{b \cdot h^3}}{{12}} = {I_g:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
+            
+            st.markdown("ต้องการเหล็กเสริมหลัก (Main Rebar) พื้นที่:")
             st.latex(rf"d = h - 5 = {h_rc} - 5 = {d_rc} \text{{ cm}}")
             st.latex(rf"A_s = \frac{{M_{{max}} \cdot 100}}{{f_s \cdot j \cdot d}} = \frac{{{M_total_rc:,.2f} \cdot 100}}{{{fs} \cdot {j_val} \cdot {d_rc}}} = {As_req:,.2f} \text{{ cm}}^2")
-            
-            st.markdown("### ขั้นตอนที่ 4: การตรวจสอบการแอ่นตัว (Deflection Check)")
-            st.latex(rf"I_{{gross}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_rc} \cdot {h_rc}^3}}{{12}} = {I_g:,.2f} \text{{ cm}}^4")
-            if is_uniform_rc:
-                st.latex(rf"\Delta_{{max}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E_c \cdot I_g}} = {delta_max_rc:,.3f} \text{{ cm}}")
-            else:
-                st.latex(rf"\Delta_{{max}} = \frac{{P \cdot L^3}}{{48 \cdot E_c \cdot I_g}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E_c \cdot I_g}} = {delta_max_rc:,.3f} \text{{ cm}}")
-            st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_cm_rc}}}{{360}} = {delta_allow_rc:,.3f} \text{{ cm}}")
-            st.markdown(f"**สรุป:** $\Delta_{{max}} \le \Delta_{{allow}}$ (คานปลอดภัยจากการแอ่นตัว)")
