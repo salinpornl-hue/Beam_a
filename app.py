@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Beam Design Pro", page_icon="🏗️", layout="wide")
 
 st.title("🏗️ โปรแกรมออกแบบขนาดคานเบื้องต้น (Pro Version)")
-st.markdown("รองรับการคิดน้ำหนักตัวเอง, ปรับขนาดอัตโนมัติหากแอ่นตัวเกินเกณฑ์, แสดงกราฟ และ **แสดงรายการคำนวณแบบ Required vs Provided**")
+st.markdown("รองรับการคิดน้ำหนักตัวเอง, ปรับขนาดอัตโนมัติหากแอ่นตัวเกินเกณฑ์, แสดงกราฟ และ **แสดงรายการคำนวณแบบ Required ➔ Provided**")
 st.divider()
 
 def plot_diagrams(L, w_total, P, is_uniform):
@@ -130,19 +130,13 @@ with tab1:
 
         # ================= รายการคำนวณ (Tab 1) =================
         with st.expander("📝 ดูรายการคำนวณ (Required vs Provided)"):
-            st.markdown("### ขั้นตอนที่ 1: การหาน้ำหนักและโมเมนต์ดัดรวม")
-            st.latex(rf"w_{{total}} = w_{{applied}} + w_{{self}} = {val_load_homo} + {w_self_actual:,.2f} = {w_total_actual:,.2f} \text{{ kg/m}}")
-            if is_uniform_homo:
-                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
-            else:
-                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
-
-            st.markdown("---")
-            st.markdown("### ขั้นตอนที่ 2: การหาค่าหน้าตัดขั้นต่ำที่ต้องการ (Required Section Properties)")
-            st.markdown("**1. เพื่อต้านทานโมเมนต์ดัด (Bending):** ต้องมี $S$ มากกว่าหรือเท่ากับ")
+            st.markdown("### 📌 ขั้นตอนที่ 1: หาค่าความต้องการหน้าตัดขั้นต่ำ (Required Properties)")
+            st.markdown("จากน้ำหนักบรรทุกและโมเมนต์ดัดที่เกิดขึ้น หน้าตัดต้องมีคุณสมบัติ **ขั้นต่ำ** ดังนี้:")
+            
+            st.markdown("**1. เพื่อต้านทานโมเมนต์ดัด (Bending Stress):**")
             st.latex(rf"S_{{req}} = \frac{{M_{{max}} \cdot 100}}{{\sigma_{{allow}}}} = \frac{{{M_total:,.2f} \cdot 100}}{{{sigma_allow}}} = {S_req_val:,.2f} \text{{ cm}}^3")
             
-            st.markdown("**2. เพื่อป้องกันการแอ่นตัว (Deflection):** ต้องมี $I$ มากกว่าหรือเท่ากับ")
+            st.markdown("**2. เพื่อควบคุมการแอ่นตัว (Deflection):**")
             st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
             if is_uniform_homo:
                 st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_val:,.2f} \text{{ cm}}^4")
@@ -150,10 +144,14 @@ with tab1:
                 st.latex(rf"I_{{req}} = \frac{{P \cdot L^3}}{{48 \cdot E \cdot \Delta_{{allow}}}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_val:,.2f} \text{{ cm}}^4")
 
             st.markdown("---")
-            st.markdown("### ขั้นตอนที่ 3: ตรวจสอบขนาดหน้าตัดที่เลือก (Section Check)")
-            st.markdown(f"เลือกใช้หน้าตัด กว้าง **$b = {b_final}$ cm**, ลึก **$h = {h_final}$ cm**")
-            st.latex(rf"S_{{provided}} = \frac{{b \cdot h^2}}{{6}} = {S_provided:,.2f} \text{{ cm}}^3 \ge S_{{req}} \text{{ (OK)}}")
-            st.latex(rf"I_{{provided}} = \frac{{b \cdot h^3}}{{12}} = {I_val:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
+            st.markdown("### 📌 ขั้นตอนที่ 2: เลือกขนาดหน้าตัด (Try Section)")
+            st.markdown(f"ทดลองเลือกใช้หน้าตัด กว้าง **$b = {b_final}$ cm**, ลึก **$h = {h_final}$ cm**")
+
+            st.markdown("---")
+            st.markdown("### 📌 ขั้นตอนที่ 3: ตรวจสอบหน้าตัด (Section Check)")
+            st.markdown("นำค่า $b$ และ $h$ ที่เลือกมาคำนวณหาค่าที่จัดให้ (Provided) เพื่อเทียบกับค่าขั้นต่ำ (Required):")
+            st.latex(rf"S_{{provided}} = \frac{{b \cdot h^2}}{{6}} = \frac{{{b_final} \cdot {h_final}^2}}{{6}} = {S_provided:,.2f} \text{{ cm}}^3 \ge S_{{req}} \text{{ (OK)}}")
+            st.latex(rf"I_{{provided}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_final} \cdot {h_final}^3}}{{12}} = {I_val:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
 
 # ==========================================
 # TAB 2: คอนกรีตเสริมเหล็ก (RC Beam)
@@ -246,26 +244,23 @@ with tab2:
 
         # ================= รายการคำนวณ (Tab 2) =================
         with st.expander("📝 ดูรายการคำนวณ (Required vs Provided)"):
-            st.markdown("### ขั้นตอนที่ 1: การหาโมเมนต์ดัดสูงสุด (Max Moment)")
-            st.latex(rf"w_{{total}} = {val_load_rc} + {w_self_rc:,.2f} = {w_total_rc:,.2f} \text{{ kg/m}}")
-            if is_uniform_rc:
-                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
-            else:
-                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
-
-            st.markdown("---")
-            st.markdown("### ขั้นตอนที่ 2: ค่าที่ต้องการขั้นต่ำเพื่อควบคุมการแอ่นตัว (Deflection Control)")
-            st.markdown("จากกฎหมาย ระยะแอ่นตัวยอมให้ $\Delta_{allow} = L/360$ ดังนั้นหน้าตัดคอนกรีตต้องมี $I_{gross}$ ไม่น้อยกว่า:")
+            st.markdown("### 📌 ขั้นตอนที่ 1: หาค่าความต้องการหน้าตัดขั้นต่ำ (Required Properties)")
+            st.markdown("เพื่อให้คานคอนกรีตไม่แอ่นตัวเกินระยะที่กฎหมายกำหนด ($L/360$) หน้าตัดคานต้องมีโมเมนต์ความเฉื่อย ($I$) ขั้นต่ำ:")
+            st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_cm_rc}}}{{360}} = {delta_allow_rc:,.2f} \text{{ cm}}")
             if is_uniform_rc:
                 st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E_c \cdot \Delta_{{allow}}}} = {I_req_rc:,.2f} \text{{ cm}}^4")
             else:
                 st.latex(rf"I_{{req}} = \frac{{P \cdot L^3}}{{48 \cdot E_c \cdot \Delta_{{allow}}}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E_c \cdot \Delta_{{allow}}}} = {I_req_rc:,.2f} \text{{ cm}}^4")
             
             st.markdown("---")
-            st.markdown("### ขั้นตอนที่ 3: ตรวจสอบหน้าตัดที่เลือก และหาพื้นที่เหล็กเสริม")
-            st.markdown(f"เลือกใช้หน้าตัด กว้าง **$b = {b_rc}$ cm**, ลึก **$h = {h_rc}$ cm**")
-            st.latex(rf"I_{{gross}} = \frac{{b \cdot h^3}}{{12}} = {I_g:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
+            st.markdown("### 📌 ขั้นตอนที่ 2: เลือกขนาดหน้าตัด (Try Section)")
+            st.markdown(f"ทดลองเลือกใช้หน้าตัด กว้าง **$b = {b_rc}$ cm**, ลึก **$h = {h_rc}$ cm**")
             
-            st.markdown("ต้องการเหล็กเสริมหลัก (Main Rebar) พื้นที่:")
+            st.markdown("---")
+            st.markdown("### 📌 ขั้นตอนที่ 3: ตรวจสอบหน้าตัดและคำนวณเหล็กเสริม (Check & Design)")
+            st.markdown("**1. ตรวจสอบการแอ่นตัว:**")
+            st.latex(rf"I_{{gross}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_rc} \cdot {h_rc}^3}}{{12}} = {I_g:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
+            
+            st.markdown("**2. คำนวณหาพื้นที่เหล็กเสริมรับแรงดึงหลัก (As):**")
             st.latex(rf"d = h - 5 = {h_rc} - 5 = {d_rc} \text{{ cm}}")
             st.latex(rf"A_s = \frac{{M_{{max}} \cdot 100}}{{f_s \cdot j \cdot d}} = \frac{{{M_total_rc:,.2f} \cdot 100}}{{{fs} \cdot {j_val} \cdot {d_rc}}} = {As_req:,.2f} \text{{ cm}}^2")
