@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Beam Design Pro", page_icon="🏗️", layout="wide")
 
 st.title("🏗️ โปรแกรมออกแบบขนาดคานเบื้องต้น (Pro Version)")
-st.markdown("รองรับการคิดน้ำหนักตัวเอง, **ปรับขนาดอัตโนมัติหากคานแอ่นตัวเกินเกณฑ์**, และแสดงกราฟ SFD/BMD")
+st.markdown("รองรับการคิดน้ำหนักตัวเอง, ปรับขนาดอัตโนมัติหากแอ่นตัวเกินเกณฑ์, แสดงกราฟ และ **แสดงรายการคำนวณโดยละเอียด**")
 st.divider()
 
 def plot_diagrams(L, w_total, P, is_uniform):
@@ -66,17 +66,14 @@ with tab1:
         ratio = st.number_input("สัดส่วน ความลึก/ความกว้าง (h/b)", min_value=1.0, value=2.0, step=0.5, key="ratio_homo")
 
     if st.button("🚀 ประเมินขนาดและวิเคราะห์คาน", type="primary", key="btn_homo"):
-        # 1. หาหน้าตัดเบื้องต้นรับแรงดัด
         M_applied = (val_load_homo * L_homo**2)/8 if is_uniform_homo else (P_homo * L_homo)/4
         S_init = (M_applied * 100) / sigma_allow
         b_init = math.pow((6 * S_init) / (ratio**2), 1/3)
         h_init = ratio * b_init
         
-        # 2. ปรับหน้าตัดเบื้องต้น
         b_final = math.ceil(b_init)
         h_final = math.ceil(ratio * b_final)
         
-        # 3. วนลูป Auto-Resize เช็ค Deflection
         L_cm = L_homo * 100
         delta_allow = L_cm / 360
         auto_resized = False
@@ -94,26 +91,28 @@ with tab1:
                 delta_max = delta_P + delta_w
                 
             if delta_max <= delta_allow:
-                break # ปลอดภัยแล้ว ออกจากลูป
+                break
             else:
                 auto_resized = True
-                b_final += 1 # อัปไซส์กว้างขึ้น 1 ซม.
-                h_final = math.ceil(b_final * ratio) # ปรับลึกตาม
+                b_final += 1
+                h_final = math.ceil(b_final * ratio)
         
         M_self = (w_self_actual * L_homo**2) / 8
         M_total = M_applied + M_self
+        S_provided = (b_final * h_final**2) / 6
+        fb_actual = (M_total * 100) / S_provided
         
         st.divider()
         st.header("📊 2. สรุปผลการประเมินหน้าตัดขั้นสุดท้าย")
         
         if auto_resized:
-            st.warning(f"🔄 **ระบบทำการปรับขนาดหน้าตัดอัตโนมัติ!** (เนื่องจากขนาดเริ่มต้นทำให้คานแอ่นตัวเกิน {delta_allow:.2f} cm)")
+            st.warning(f"🔄 **ระบบทำการปรับขนาดหน้าตัดอัตโนมัติ!** เพื่อแก้ปัญหาการแอ่นตัว")
             
         st.success(f"### 📐 ขนาดหน้าตัดที่ปลอดภัย: กว้าง {b_final} ซม. × ลึก {h_final} ซม.")
         
         col_r1, col_r2, col_r3 = st.columns(3)
-        col_r1.metric("โมเมนต์รวม (M_total)", f"{M_total:,.2f} kg-m", delta=f"+{M_self:,.2f} kg-m (Self-wt)", delta_color="inverse")
-        col_r2.metric("น้ำหนักคาน (Self-wt)", f"{w_self_actual:,.2f} kg/m")
+        col_r1.metric("โมเมนต์รวม (M_total)", f"{M_total:,.2f} kg-m")
+        col_r2.metric("หน่วยแรงดัดที่เกิดจริง (fb)", f"{fb_actual:,.2f} kg/cm²", delta=f"ยอมให้ {sigma_allow:,.2f} kg/cm²", delta_color="normal")
         col_r3.metric("ระยะแอ่นตัวสูงสุด", f"{delta_max:,.3f} cm", delta=f"ยอมให้ {delta_allow:,.3f} cm", delta_color="normal")
             
         st.divider()
@@ -122,6 +121,30 @@ with tab1:
         cp1, cp2 = st.columns(2)
         cp1.plotly_chart(fig_v, use_container_width=True)
         cp2.plotly_chart(fig_m, use_container_width=True)
+
+        # ================= รายการคำนวณ (Tab 1) =================
+        with st.expander("📝 ดูรายการคำนวณโดยละเอียด (Calculation Report)"):
+            st.markdown("### ขั้นตอนที่ 1: การหาน้ำหนักและโมเมนต์ดัดรวม")
+            st.latex(rf"w_{{self}} = ({b_final}/100) \times ({h_final}/100) \times {density:,.0f} = {w_self_actual:,.2f} \text{{ kg/m}}")
+            st.latex(rf"w_{{total}} = w_{{applied}} + w_{{self}} = {val_load_homo} + {w_self_actual:,.2f} = {w_total_actual:,.2f} \text{{ kg/m}}")
+            
+            if is_uniform_homo:
+                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = \frac{{{w_total_actual:,.2f} \cdot {L_homo}^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
+            else:
+                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = \frac{{{P_homo} \cdot {L_homo}}}{{4}} + \frac{{{w_self_actual:,.2f} \cdot {L_homo}^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
+
+            st.markdown("### ขั้นตอนที่ 2: ตรวจสอบหน่วยแรงดัด (Bending Stress)")
+            st.latex(rf"S_{{provided}} = \frac{{b \cdot h^2}}{{6}} = \frac{{{b_final} \cdot {h_final}^2}}{{6}} = {S_provided:,.2f} \text{{ cm}}^3")
+            st.latex(rf"f_b = \frac{{M_{{max}} \cdot 100}}{{S_{{provided}}}} = \frac{{{M_total:,.2f} \cdot 100}}{{{S_provided:,.2f}}} = {fb_actual:,.2f} \text{{ kg/cm}}^2 \le {sigma_allow} \text{{ kg/cm}}^2 \text{{ (OK)}}")
+
+            st.markdown("### ขั้นตอนที่ 3: ตรวจสอบการแอ่นตัว (Deflection)")
+            st.latex(rf"I_{{provided}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_final} \cdot {h_final}^3}}{{12}} = {I_val:,.2f} \text{{ cm}}^4")
+            if is_uniform_homo:
+                st.latex(rf"\Delta_{{max}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot I}} = {delta_max:,.3f} \text{{ cm}}")
+            else:
+                st.latex(rf"\Delta_{{max}} = \frac{{P \cdot L^3}}{{48 \cdot E \cdot I}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E \cdot I}} = {delta_max:,.3f} \text{{ cm}}")
+            st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_cm}}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
+            st.markdown(f"**สรุป:** $\Delta_{{max}} \le \Delta_{{allow}}$ (คานปลอดภัยจากการแอ่นตัว)")
 
 # ==========================================
 # TAB 2: คอนกรีตเสริมเหล็ก (RC Beam)
@@ -147,11 +170,9 @@ with tab2:
         st.info("ความหนาแน่นคอนกรีต: **2,400 kg/m³** | โมดูลัสยืดหยุ่น (E): **~200,000 kg/cm²**")
 
     if st.button("🚀 ประเมินหน้าตัดและเหล็กเสริม (RC)", type="primary", key="btn_rc"):
-        # 1. ประมาณขนาดเริ่มต้นด้วย Rule of Thumb
         h_rc = math.ceil(((L_rc * 100) / 10) / 5.0) * 5
         b_rc = math.ceil((h_rc / 2) / 5.0) * 5
         
-        # 2. วนลูป Auto-Resize เช็ค Deflection
         L_cm_rc = L_rc * 100
         delta_allow_rc = L_cm_rc / 360
         E_c = 2.0e5
@@ -170,13 +191,12 @@ with tab2:
                 delta_max_rc = delta_P_rc + delta_w_rc
                 
             if delta_max_rc <= delta_allow_rc:
-                break # ปลอดภัย
+                break
             else:
                 auto_resized_rc = True
-                h_rc += 5 # อัปไซส์ความลึกทีละ 5 ซม.
-                b_rc = math.ceil((h_rc / 2) / 5.0) * 5 # ปรับความกว้างตาม
+                h_rc += 5
+                b_rc = math.ceil((h_rc / 2) / 5.0) * 5
                 
-        # 3. คำนวณเหล็กเสริมจากขนาดที่ปลอดภัยแล้ว
         M_applied_rc = (val_load_rc * L_rc**2)/8 if is_uniform_rc else (P_rc * L_rc)/4
         M_self_rc = (w_self_rc * L_rc**2) / 8
         M_total_rc = M_applied_rc + M_self_rc
@@ -196,15 +216,40 @@ with tab2:
         st.success(f"### 📐 หน้าตัดคานที่ปลอดภัย: กว้าง {b_rc} × ลึก {h_rc} ซม.")
         
         c_out1, c_out2, c_out3 = st.columns(3)
-        c_out1.metric("โมเมนต์รวม (M_total)", f"{M_total_rc:,.2f} kg-m", delta=f"+{M_self_rc:,.2f} kg-m (Self-wt)", delta_color="inverse")
-        c_out2.metric("น้ำหนักคาน (Self-wt)", f"{w_self_rc:,.2f} kg/m")
+        c_out1.metric("โมเมนต์รวม (M_total)", f"{M_total_rc:,.2f} kg-m")
+        c_out2.metric("เหล็กเสริมรับแรงดึง (As)", f"{As_req:,.2f} cm²")
         c_out3.metric("ระยะแอ่นตัวสูงสุด", f"{delta_max_rc:,.3f} cm", delta=f"ยอมให้ {delta_allow_rc:,.2f} cm", delta_color="normal")
         
-        st.info(f"**🛠️ ปริมาณเหล็กเสริมที่แนะนำ (As = {As_req:,.2f} cm²):** ใช้อย่างน้อย DB12 จำนวน {n_DB12} เส้น หรือ DB16 จำนวน {n_DB16} เส้น")
+        st.info(f"**🛠️ ปริมาณเหล็กเสริมที่แนะนำ:** ใช้อย่างน้อย DB12 จำนวน {n_DB12} เส้น หรือ DB16 จำนวน {n_DB16} เส้น")
             
         st.divider()
-        st.header("📈 3. แผนภาพแรงเฉือนและโมเมนต์ดัด (รวมน้ำหนักคานแล้ว)")
+        st.header("📈 3. แผนภาพแรงเฉือนและโมเมนต์ดัด")
         fig_v_rc, fig_m_rc = plot_diagrams(L_rc, w_total_rc, P_rc, is_uniform_rc)
         cr1, cr2 = st.columns(2)
         cr1.plotly_chart(fig_v_rc, use_container_width=True)
         cr2.plotly_chart(fig_m_rc, use_container_width=True)
+
+        # ================= รายการคำนวณ (Tab 2) =================
+        with st.expander("📝 ดูรายการคำนวณโดยละเอียด (Calculation Report)"):
+            st.markdown("### ขั้นตอนที่ 1: การประมาณขนาดหน้าตัดและน้ำหนักคาน")
+            st.latex(rf"w_{{self}} = ({b_rc}/100) \times ({h_rc}/100) \times 2400 = {w_self_rc:,.2f} \text{{ kg/m}}")
+            st.latex(rf"w_{{total}} = {val_load_rc} + {w_self_rc:,.2f} = {w_total_rc:,.2f} \text{{ kg/m}}")
+            
+            st.markdown("### ขั้นตอนที่ 2: การหาโมเมนต์ดัดสูงสุด")
+            if is_uniform_rc:
+                st.latex(rf"M_{{max}} = \frac{{w_{{total}} \cdot L^2}}{{8}} = \frac{{{w_total_rc:,.2f} \cdot {L_rc}^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
+            else:
+                st.latex(rf"M_{{max}} = \frac{{P \cdot L}}{{4}} + \frac{{w_{{self}} \cdot L^2}}{{8}} = \frac{{{P_rc} \cdot {L_rc}}}{{4}} + \frac{{{w_self_rc:,.2f} \cdot {L_rc}^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
+
+            st.markdown("### ขั้นตอนที่ 3: การหาพื้นที่เหล็กเสริม (Working Stress Design)")
+            st.latex(rf"d = h - 5 = {h_rc} - 5 = {d_rc} \text{{ cm}}")
+            st.latex(rf"A_s = \frac{{M_{{max}} \cdot 100}}{{f_s \cdot j \cdot d}} = \frac{{{M_total_rc:,.2f} \cdot 100}}{{{fs} \cdot {j_val} \cdot {d_rc}}} = {As_req:,.2f} \text{{ cm}}^2")
+            
+            st.markdown("### ขั้นตอนที่ 4: การตรวจสอบการแอ่นตัว (Deflection Check)")
+            st.latex(rf"I_{{gross}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_rc} \cdot {h_rc}^3}}{{12}} = {I_g:,.2f} \text{{ cm}}^4")
+            if is_uniform_rc:
+                st.latex(rf"\Delta_{{max}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E_c \cdot I_g}} = {delta_max_rc:,.3f} \text{{ cm}}")
+            else:
+                st.latex(rf"\Delta_{{max}} = \frac{{P \cdot L^3}}{{48 \cdot E_c \cdot I_g}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E_c \cdot I_g}} = {delta_max_rc:,.3f} \text{{ cm}}")
+            st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_cm_rc}}}{{360}} = {delta_allow_rc:,.3f} \text{{ cm}}")
+            st.markdown(f"**สรุป:** $\Delta_{{max}} \le \Delta_{{allow}}$ (คานปลอดภัยจากการแอ่นตัว)")
