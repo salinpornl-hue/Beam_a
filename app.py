@@ -146,67 +146,66 @@ with tab1:
             cp2.plotly_chart(fig_m, use_container_width=True)
 
             # ================= กู้คืนรายการคำนวณของคุณ (Tab 1) =================
-            # ================= กู้คืนและขยายความรายการคำนวณ (Tab 1) =================
+            # ================= [แก้ไขแล้ว] รายการคำนวณของ Tab 1 =================
             with st.expander("📝 ดูรายการคำนวณแบบละเอียด: ทฤษฎี, การหาค่าขั้นต่ำ และการเลือกขนาด"):
-                st.markdown("### 📌 ขั้นตอนที่ 1: การหาค่าความต้องการของหน้าตัด (Required Section Properties)")
-                st.markdown("ในการออกแบบคาน หน้าตัดจะต้องมีขนาดใหญ่พอที่จะต้านทาน **โมเมนต์ดัด (Bending Moment)** ไม่ให้วัสดุเกิดความเค้นเกินขีดจำกัด และต้องมีสติฟเนส (Stiffness) มากพอที่จะต้านทาน **การแอ่นตัว (Deflection)** ไม่ให้เกินค่าที่มาตรฐานกำหนด")
+                st.markdown(r"### 📌 ขั้นตอนที่ 1: การหาค่าความต้องการของหน้าตัด (Required Section Properties)")
+                st.markdown(r"ในการออกแบบคาน หน้าตัดจะต้องมีขนาดใหญ่พอที่จะต้านทาน **โมเมนต์ดัด (Bending Moment)** ไม่ให้วัสดุเกิดความเค้นเกินขีดจำกัด และต้องมีสติฟเนส (Stiffness) มากพอที่จะต้านทาน **การแอ่นตัว (Deflection)** ไม่ให้เกินค่าที่มาตรฐานกำหนด")
                 
-                st.markdown(f"- **น้ำหนักรวมที่กระทำบนคาน ($w_{{total}}$):** {w_total_actual:,.2f} kg/m")
-                st.markdown(f"- **โมเมนต์ดัดสูงสุดที่เกิดขึ้น ($M_{{max}}$):** {M_total:,.2f} kg-m")
+                st.markdown(rf"- **น้ำหนักรวมที่กระทำบนคาน ($w_{{total}}$):** {w_total_actual:,.2f} kg/m")
+                st.markdown(rf"- **โมเมนต์ดัดสูงสุดที่เกิดขึ้น ($M_{{max}}$):** {M_total:,.2f} kg-m")
                 
                 st.markdown("---")
-                st.markdown("**1.1 ความต้องการเพื่อต้านทานการดัด (Bending Criteria):**")
-                st.markdown("จากทฤษฎีแรงดัด (Flexure Formula) หน่วยแรงดัดดึง/อัดสูงสุด คำนวณจาก $\sigma = \frac{M \cdot c}{I}$ และเนื่องจาก Section Modulus ถูกนิยามไว้ว่า $S = \frac{I}{c}$ สมการจึงเขียนได้เป็น $\sigma = \frac{M}{S}$")
-                st.markdown("ดังนั้น เพื่อไม่ให้หน่วยแรงที่เกิดขึ้นจริงเกินค่าความเค้นที่ยอมให้ ($\sigma_{allow}$) คานจึงต้องการค่า $S_{req}$ ขั้นต่ำดังนี้:")
+                st.markdown(r"**1.1 ความต้องการเพื่อต้านทานการดัด (Bending Criteria):**")
+                st.markdown(r"จากทฤษฎีแรงดัด (Flexure Formula) หน่วยแรงดัดดึง/อัดสูงสุด คำนวณจาก $\sigma = \frac{M \cdot c}{I}$ และเนื่องจาก Section Modulus ถูกนิยามไว้ว่า $S = \frac{I}{c}$ สมการจึงเขียนได้เป็น $\sigma = \frac{M}{S}$")
+                st.markdown(r"ดังนั้น เพื่อไม่ให้หน่วยแรงที่เกิดขึ้นจริงเกินค่าความเค้นที่ยอมให้ ($\sigma_{allow}$) คานจึงต้องการค่า $S_{req}$ ขั้นต่ำดังนี้:")
                 st.latex(rf"S_{{req}} = \frac{{M_{{max}} \cdot 100 \text{{ (แปลงหน่วยเป็น kg-cm)}}}}{{\sigma_{{allow}}}} = \frac{{{M_total:,.2f} \cdot 100}}{{{sigma_allow:,.0f}}} = {S_req_final:,.2f} \text{{ cm}}^3")
                 
-                st.markdown("**1.2 ความต้องการเพื่อควบคุมการแอ่นตัว (Deflection Criteria):**")
-                st.markdown("มาตรฐานทางวิศวกรรมทั่วไปกำหนดให้คานรับน้ำหนักใช้งาน (Service Load) แอ่นตัวได้สูงสุดไม่เกิน $L/360$ ของความยาวช่วงคาน:")
+                st.markdown(r"**1.2 ความต้องการเพื่อควบคุมการแอ่นตัว (Deflection Criteria):**")
+                st.markdown(r"มาตรฐานทางวิศวกรรมทั่วไปกำหนดให้คานรับน้ำหนักใช้งาน (Service Load) แอ่นตัวได้สูงสุดไม่เกิน $L/360$ ของความยาวช่วงคาน:")
                 st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_homo*100:,.0f}}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
                 
-                st.markdown("จากสมการการแอ่นตัวของคาน (Elastic Curve) เราสามารถย้ายข้างสมการเพื่อหาค่าโมเมนต์ความเฉื่อย ($I_{req}$) ขั้นต่ำที่สอดคล้องกับ $\Delta_{allow}$ ได้:")
+                st.markdown(r"จากสมการการแอ่นตัวของคาน (Elastic Curve) เราสามารถย้ายข้างสมการเพื่อหาค่าโมเมนต์ความเฉื่อย ($I_{req}$) ขั้นต่ำที่สอดคล้องกับ $\Delta_{allow}$ ได้:")
                 if is_uniform_homo:
-                    st.markdown("- กรณี **น้ำหนักแผ่กระจายสม่ำเสมอ (Uniform Load):** สูตรการแอ่นตัวสูงสุดคือ $\Delta = \frac{5wL^4}{384EI}$")
+                    st.markdown(r"- กรณี **น้ำหนักแผ่กระจายสม่ำเสมอ (Uniform Load):** สูตรการแอ่นตัวสูงสุดคือ $\Delta = \frac{5wL^4}{384EI}$")
                     st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_final:,.2f} \text{{ cm}}^4")
                 else:
-                    st.markdown("- กรณี **น้ำหนักกระทำเป็นจุดกึ่งกลาง (Point Load) + น้ำหนักคาน (Uniform):** ใช้หลักการ Superposition $\Delta = \frac{PL^3}{48EI} + \frac{5w_{self}L^4}{384EI}$")
+                    st.markdown(r"- กรณี **น้ำหนักกระทำเป็นจุดกึ่งกลาง (Point Load) + น้ำหนักคาน (Uniform):** ใช้หลักการ Superposition $\Delta = \frac{PL^3}{48EI} + \frac{5w_{self}L^4}{384EI}$")
                     st.latex(rf"I_{{req}} = \left( \frac{{P \cdot L^3}}{{48 \cdot E \cdot \Delta_{{allow}}}} \right) + \left( \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} \right) = {I_req_final:,.2f} \text{{ cm}}^4")
 
                 if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)":
                     st.markdown("---")
-                    st.markdown("### 📌 ขั้นตอนที่ 2: การถอดสมการหาความกว้าง (b) และความลึก (h) ขั้นต่ำสุดทางทฤษฎี")
-                    st.markdown(f"เมื่อเราทราบว่าหน้าตัดเป็นรูปสี่เหลี่ยมตัน และได้กำหนดสัดส่วนความลึกต่อความกว้างไว้เป็น $h = {ratio}b$ เราสามารถนำสัดส่วนนี้ไปแทนค่าในสูตรคุณสมบัติหน้าตัด เพื่อจัดรูปสมการหาค่าความกว้าง $b$ ขั้นต่ำได้ดังนี้:")
+                    st.markdown(r"### 📌 ขั้นตอนที่ 2: การถอดสมการหาความกว้าง (b) และความลึก (h) ขั้นต่ำสุดทางทฤษฎี")
+                    st.markdown(rf"เมื่อเราทราบว่าหน้าตัดเป็นรูปสี่เหลี่ยมตัน และได้กำหนดสัดส่วนความลึกต่อความกว้างไว้เป็น $h = {ratio}b$ เราสามารถนำสัดส่วนนี้ไปแทนค่าในสูตรคุณสมบัติหน้าตัด เพื่อจัดรูปสมการหาค่าความกว้าง $b$ ขั้นต่ำได้ดังนี้:")
                     
-                    st.markdown("**2.1 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์โมเมนต์ดัด:**")
-                    st.markdown("สูตร Section Modulus ของหน้าตัดสี่เหลี่ยมคือ $S = \frac{bh^2}{6}$ เมื่อแทนค่า $h = {ratio}b$ จะได้:")
+                    st.markdown(r"**2.1 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์โมเมนต์ดัด:**")
+                    st.markdown(rf"สูตร Section Modulus ของหน้าตัดสี่เหลี่ยมคือ $S = \frac{{bh^2}}{{6}}$ เมื่อแทนค่า $h = {ratio}b$ จะได้:")
                     st.latex(rf"S = \frac{{b \cdot ({ratio}b)^2}}{{6}} = \frac{{{ratio**2} \cdot b^3}}{{6}}")
                     st.markdown("ย้ายข้างสมการเพื่อหาค่า $b$ ที่ต้องการ:")
-                    st.latex(rf"b \ge \sqrt[3]{{\frac{{6 \cdot S_{{req}}}}{{{ratio**2}}}}} \implies \sqrt[3]{{\frac{{6 \cdot {S_req_final:,.2f}}}{{{ratio**2}}}}} \implies b \ge {b_min_bend_final:,.2f} \text{{ cm}}")
+                    st.latex(rf"b \ge \sqrt[3]{{\frac{{6 \cdot S_{{req}}}}{{{ratio**2}}}}} \implies \sqrt[3]{{\frac{{6 \cdot {S_req_final:,.2f}}}}{{{ratio**2}}}}} \implies b \ge {b_min_bend_final:,.2f} \text{{ cm}}")
 
-                    st.markdown("**2.2 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์การแอ่นตัว:**")
-                    st.markdown("สูตร Moment of Inertia ของหน้าตัดสี่เหลี่ยมคือ $I = \frac{bh^3}{12}$ เมื่อแทนค่า $h = {ratio}b$ จะได้:")
+                    st.markdown(r"**2.2 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์การแอ่นตัว:**")
+                    st.markdown(rf"สูตร Moment of Inertia ของหน้าตัดสี่เหลี่ยมคือ $I = \frac{{bh^3}}{{12}}$ เมื่อแทนค่า $h = {ratio}b$ จะได้:")
                     st.latex(rf"I = \frac{{b \cdot ({ratio}b)^3}}{{12}} = \frac{{{ratio**3} \cdot b^4}}{{12}}")
                     st.markdown("ย้ายข้างสมการเพื่อหาค่า $b$ ที่ต้องการ:")
-                    st.latex(rf"b \ge \sqrt[4]{{\frac{{12 \cdot I_{{req}}}}{{{ratio**3}}}}} \implies \sqrt[4]{{\frac{{12 \cdot {I_req_final:,.2f}}}{{{ratio**3}}}}} \implies b \ge {b_min_def_final:,.2f} \text{{ cm}}")
+                    st.latex(rf"b \ge \sqrt[4]{{\frac{{12 \cdot I_{{req}}}}{{{ratio**3}}}}} \implies \sqrt[4]{{\frac{{12 \cdot {I_req_final:,.2f}}}}{{{ratio**3}}}}} \implies b \ge {b_min_def_final:,.2f} \text{{ cm}}")
 
-                    st.markdown(f"**สรุปการหาค่าตามทฤษฎี:** ต้องเลือกค่า $b$ ที่สูงกว่า เพื่อให้หน้าตัดผ่านทั้งสองเกณฑ์ $\implies b_{{min}} = {b_req_theoretical:,.2f}$ cm")
+                    st.markdown(rf"**สรุปการหาค่าตามทฤษฎี:** ต้องเลือกค่า $b$ ที่สูงกว่า เพื่อให้หน้าตัดผ่านทั้งสองเกณฑ์ $\implies b_{{min}} = {b_req_theoretical:,.2f}$ cm")
                     st.markdown(rf"และเมื่อนำไปหาค่าความลึก จะได้ $h_{{min}} = {ratio} \times {b_req_theoretical:,.2f} = {h_req_theoretical:,.2f}$ cm")
 
                 st.markdown("---")
-                st.markdown("### 📌 ขั้นตอนที่ 3: สรุปการเลือกใช้หน้าตัดจริง (Provided Section vs Required Section)")
-                st.markdown(f"จากการค้นหาหน้าตัดที่ปลอดภัยและปรับตัวเลขเผื่อให้ทำงานได้จริง (Practical Dimension) โปรแกรมเลือกใช้หน้าตัด: **กว้าง $b = {b_final:.0f}$ cm** และ **ลึก $h = {h_final:.0f}$ cm**")
+                st.markdown(r"### 📌 ขั้นตอนที่ 3: สรุปการเลือกใช้หน้าตัดจริง (Provided Section vs Required Section)")
+                st.markdown(rf"จากการค้นหาหน้าตัดที่ปลอดภัยและปรับตัวเลขเผื่อให้ทำงานได้จริง (Practical Dimension) โปรแกรมเลือกใช้หน้าตัด: **กว้าง $b = {b_final:.0f}$ cm** และ **ลึก $h = {h_final:.0f}$ cm**")
                 
-                st.markdown("**ตรวจสอบคุณสมบัติของหน้าตัดที่เลือกใช้งานเทียบกับความต้องการ:**")
-                st.markdown("**1. ตรวจสอบพิกัดต้านทานการดัด (Section Modulus Check):**")
+                st.markdown(r"**ตรวจสอบคุณสมบัติของหน้าตัดที่เลือกใช้งานเทียบกับความต้องการ:**")
+                st.markdown(r"**1. ตรวจสอบพิกัดต้านทานการดัด (Section Modulus Check):**")
                 if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)":
                     st.latex(rf"S_{{prov}} = \frac{{b \cdot h^2}}{{6}} = \frac{{{b_final:.0f} \cdot {h_final:.0f}^2}}{{6}} = {S_prov:,.2f} \text{{ cm}}^3")
                 st.latex(rf"S_{{prov}} ({S_prov:,.2f} \text{{ cm}}^3) \ge S_{{req}} ({S_req_final:,.2f} \text{{ cm}}^3) \implies \text{{ปลอดภัย (OK)}}")
                 
-                st.markdown("**2. ตรวจสอบพิกัดควบคุมการแอ่นตัว (Moment of Inertia Check):**")
+                st.markdown(r"**2. ตรวจสอบพิกัดควบคุมการแอ่นตัว (Moment of Inertia Check):**")
                 if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)":
                     st.latex(rf"I_{{prov}} = \frac{{b \cdot h^3}}{{12}} = \frac{{{b_final:.0f} \cdot {h_final:.0f}^3}}{{12}} = {I_prov:,.2f} \text{{ cm}}^4")
                 st.latex(rf"I_{{prov}} ({I_prov:,.2f} \text{{ cm}}^4) \ge I_{{req}} ({I_req_final:,.2f} \text{{ cm}}^4) \implies \text{{ปลอดภัย (OK)}}")
-
 # ==========================================
 # TAB 2: คอนกรีตเสริมเหล็ก (RC Beam)
 # ==========================================
