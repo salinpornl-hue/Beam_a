@@ -172,7 +172,7 @@ with tab1:
                     st.latex(rf"I = \frac{{b \cdot ({ratio}b)^3}}{{12}} \implies b \ge \sqrt[4]{{\frac{{12 \cdot I_{{req}}}}{{{ratio**3}}}}} \implies b \ge {b_min_def_final:,.2f} \text{{ cm}}")
 
                     st.markdown(f"**สรุป:** เลือกค่า $b$ ที่มากกว่า $\implies b_{{min}} = {b_req_theoretical:,.2f}$ cm")
-                    st.markdown(f"จะได้ $h_{{min}} = {ratio} \times {b_req_theoretical:,.2f} = {h_req_theoretical:,.2f}$ cm")
+                    st.markdown(rf"จะได้ $h_{{min}} = {ratio} \times {b_req_theoretical:,.2f} = {h_req_theoretical:,.2f}$ cm")
 
                 st.markdown("---")
                 st.markdown("### 📌 ขั้นตอนที่ 3: สรุปการเลือกใช้หน้าตัดจริง (Provided Section)")
