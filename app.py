@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Beam Design Pro", page_icon="🏗️", layout="wide")
 
 st.title("🏗️ โปรแกรมออกแบบขนาดคานเบื้องต้น (Pro Version)")
-st.markdown("ระบบวิเคราะห์หน้าตัดคานที่คำนึงถึงน้ำหนักตัวเอง (Self-weight iteration) พร้อมการคำนวณออกแบบเหล็กเสริมและเหล็กปลอกตามหลักวิศวกรรม")
+st.markdown("ระบบวิเคราะห์หน้าตัดคานที่คำนึงถึงน้ำหนักตัวเอง (Self-weight iteration) พร้อมการคำนวณออกแบบเหล็กเสริมและรายการคำนวณละเอียด")
 st.divider()
 
 def plot_diagrams(L, w_total, P, is_uniform):
@@ -56,9 +56,9 @@ with tab1:
             
     with c2:
         mat_db = {
-            "เหล็กรูปพรรณ SS400 (โครงสร้างทั่วไป)": [1440.0, 7850.0, 2.0e6],
-            "เหล็กรูปพรรณ SM400 (งานเชื่อมโครงสร้าง)": [1440.0, 7850.0, 2.0e6],
-            "เหล็กรูปพรรณกำลังสูง SM490": [1980.0, 7850.0, 2.0e6],
+            "เหล็กรูปพรรณ SS400 (โครงสร้างทั่วไป/ยึดด้วยน็อต)": [1440.0, 7850.0, 2.0e6],
+            "เหล็กรูปพรรณ SM400 (งานเชื่อมโครงสร้าง/ไวด์แฟลงก์)": [1440.0, 7850.0, 2.0e6],
+            "เหล็กรูปพรรณกำลังสูง SM490 (งานรับน้ำหนักมาก)": [1980.0, 7850.0, 2.0e6],
             "ไม้เนื้อแข็ง (เช่น ไม้เต็ง, ไม้แดง)": [120.0, 800.0, 1.0e5],
             "ไม้เนื้ออ่อน (เช่น ไม้ยาง)": [60.0, 600.0, 1.0e5]
         }
@@ -67,7 +67,7 @@ with tab1:
         
         section_shape = st.selectbox("รูปแบบรูปทรงหน้าตัด", ["หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)", "หน้าตัดไวด์แฟลงก์ / เอชบีม (Wide Flange / H-Beam)"], key="shape_homo")
         ratio = st.number_input("สัดส่วน ความลึก/ความกว้าง (h/b)", min_value=1.0, value=2.0, step=0.5, key="ratio_homo")
-        st.info(f"หน่วยแรงดัดยอมให้ (Fb): **{sigma_allow:,.0f} kg/cm²** | ค่า E: **{E_val:,.0f} kg/cm²**")
+        st.info(f"หน่วยแรงดัด (Fb): **{sigma_allow:,.0f} kg/cm²**\n\nความหนาแน่น: **{density:,.0f} kg/m³** | ค่า E: **{E_val:,.0f} kg/cm²**")
     
     if st.button("🚀 ประเมินขนาดและวิเคราะห์คาน", type="primary", key="btn_homo"):
         L_cm = L_homo * 100
@@ -88,7 +88,6 @@ with tab1:
                 I_prov = (b_final * h_final**3) / 12
                 S_prov = (b_final * h_final**2) / 6
             else:
-                # ประมาณการปีกและเอวคานเหล็กดัดแปลงสำเร็จรูป (tf = 6% ของ h, tw = 4% ของ h)
                 tf = 0.06 * h_final
                 tw = 0.04 * h_final
                 area_cm2 = (2 * b_final * tf) + ((h_final - 2 * tf) * tw)
@@ -121,10 +120,16 @@ with tab1:
         if iter_count >= max_iter:
             st.error("⚠️ ไม่สามารถคำนวณหน้าตัดได้ กรุณาตรวจสอบน้ำหนักบรรทุก")
         else:
+            # คำนวณหา b ขั้นต่ำทางทฤษฎีจากโหลดรวมสุดท้าย (เพื่อให้รายการคำนวณสมบูรณ์)
+            b_min_bend_final = math.pow((6 * S_req_final) / (ratio**2), 1/3) if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)" else b_final
+            b_min_def_final = math.pow((12 * I_req_final) / (ratio**3), 0.25) if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)" else b_final
+            b_req_theoretical = max(b_min_bend_final, b_min_def_final)
+            h_req_theoretical = b_req_theoretical * ratio
+
             st.divider()
             st.header("📊 2. สรุปผลการประเมินหน้าตัดขั้นสุดท้าย")
             if auto_resized:
-                st.warning(f"🔄 **ระบบปรับขนาดเผื่อน้ำหนักตัวเอง:** รวมน้ำหนักคานเสร็จสิ้นเพิ่มขึ้นอีก {w_self_actual:,.2f} kg/m เพื่อความปลอดภัย")
+                st.warning(f"🔄 **ระบบทำการเพิ่มขนาดเผื่อน้ำหนักตัวเอง:** คานต้องรับภาระน้ำหนักตัวเองเพิ่ม {w_self_actual:,.2f} kg/m จึงได้ปรับขนาดให้ปลอดภัยขึ้น")
                 
             st.success(f"### 📐 ขนาดที่แนะนำ ({section_shape}): กว้าง {b_final:.0f} ซม. × ลึก {h_final:.0f} ซม.")
             
@@ -140,18 +145,40 @@ with tab1:
             cp1.plotly_chart(fig_v, use_container_width=True)
             cp2.plotly_chart(fig_m, use_container_width=True)
 
-            with st.expander("📝 ดูรายการคำนวณเชิงลึก"):
-                st.markdown("### 📌 รายการคำนวณคุณสมบัติหน้าตัด")
-                st.markdown(f"**โมเมนต์ดัดสูงสุดดัดรวมน้ำหนักโครงสร้าง:** $M_{{max}} = {M_total:,.2f}$ kg-m")
-                st.latex(rf"S_{{{{\text{{req}}}}}} = \frac{{M \cdot 100}}{{\sigma_{{{{\text{{allow}}}}}}}} = {S_req_final:,.2f} \text{{ cm}}^3")
-                st.latex(rf"I_{{{{\text{{req}}}}}} = {I_req_final:,.2f} \text{{ cm}}^4")
-                st.markdown("**หน้าตัดที่จัดให้จริง (Provided Properties):**")
-                st.latex(rf"S_{{{{\text{{provided}}}}}} = {S_prov:,.2f} \text{{ cm}}^3 \ge S_{{{{\text{{req}}}}}} \text{{ (OK)}}")
-                st.latex(rf"I_{{{{\text{{provided}}}}}} = {I_prov:,.2f} \text{{ cm}}^4 \ge I_{{{{\text{{req}}}}}} \text{{ (OK)}}")
+            # ================= กู้คืนรายการคำนวณของคุณ (Tab 1) =================
+            with st.expander("📝 ดูรายการคำนวณ: การหาค่าขั้นต่ำและการเลือกขนาด (Minimum Required & Provided Section)"):
+                st.markdown("### 📌 ขั้นตอนที่ 1: การหาค่าความต้องการของหน้าตัดจากน้ำหนักทั้งหมด (Required Properties)")
+                st.markdown(f"เมื่อพิจารณารวมน้ำหนักคานประเมินแล้ว ($w_{{total}} = {w_total_actual:,.2f}$ kg/m) โมเมนต์สูงสุดคือ $M_{{max}} = {M_total:,.2f}$ kg-m")
                 
-            # ฟังก์ชันเสริม: ดาวน์โหลดรายงาน
-            report_homo = f"--- BEAM DESIGN REPORT (HOMOGENEOUS) ---\nMaterial: {selected_mat}\nShape: {section_shape}\nSpan: {L_homo} m\nSection Size: {b_final:.0f}x{h_final:.0f} cm\nM_total: {M_total:,.2f} kg-m\nDeflection: {delta_max:,.3f} cm (Allowable: {delta_allow:,.3f} cm)"
-            st.download_button("💾 ดาวน์โหลดรายงานผลการคำนวณ", report_homo, file_name="Beam_Design_Report.txt")
+                st.markdown("**1. ความต้องการเพื่อต้านทานการดัด (Bending):**")
+                st.latex(rf"S_{{req}} = \frac{{M_{{max}} \cdot 100}}{{\sigma_{{allow}}}} = \frac{{{M_total:,.2f} \cdot 100}}{{{sigma_allow:,.0f}}} = {S_req_final:,.2f} \text{{ cm}}^3")
+                
+                st.markdown("**2. ความต้องการเพื่อควบคุมการแอ่นตัว (Deflection):**")
+                st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
+                if is_uniform_homo:
+                    st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_final:,.2f} \text{{ cm}}^4")
+                else:
+                    st.latex(rf"I_{{req}} = \frac{{P \cdot L^3}}{{48 \cdot E \cdot \Delta_{{allow}}}} + \frac{{5 \cdot w_{{self}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = {I_req_final:,.2f} \text{{ cm}}^4")
+
+                if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)":
+                    st.markdown("---")
+                    st.markdown("### 📌 ขั้นตอนที่ 2: การถอดสมการหาความกว้าง (b) และความลึก (h) ขั้นต่ำสุดทางทฤษฎี")
+                    st.markdown(f"จากสัดส่วนที่ระบุคือ $h = {ratio}b$ เราสามารถย้อนหาค่า $b$ ขั้นต่ำของหน้าตัดตันได้ดังนี้:")
+                    
+                    st.markdown("**1. ขนาดหน้าตัดขั้นต่ำจากเกณฑ์โมเมนต์ดัด:**")
+                    st.latex(rf"S = \frac{{b \cdot ({ratio}b)^2}}{{6}} \implies b \ge \sqrt[3]{{\frac{{6 \cdot S_{{req}}}}{{{ratio**2}}}}} \implies b \ge {b_min_bend_final:,.2f} \text{{ cm}}")
+
+                    st.markdown("**2. ขนาดหน้าตัดขั้นต่ำจากเกณฑ์การแอ่นตัว:**")
+                    st.latex(rf"I = \frac{{b \cdot ({ratio}b)^3}}{{12}} \implies b \ge \sqrt[4]{{\frac{{12 \cdot I_{{req}}}}{{{ratio**3}}}}} \implies b \ge {b_min_def_final:,.2f} \text{{ cm}}")
+
+                    st.markdown(f"**สรุป:** เลือกค่า $b$ ที่มากกว่า $\implies b_{{min}} = {b_req_theoretical:,.2f}$ cm")
+                    st.markdown(f"จะได้ $h_{{min}} = {ratio} \times {b_req_theoretical:,.2f} = {h_req_theoretical:,.2f}$ cm")
+
+                st.markdown("---")
+                st.markdown("### 📌 ขั้นตอนที่ 3: สรุปการเลือกใช้หน้าตัดจริง (Provided Section)")
+                st.markdown(f"เลือกใช้หน้าตัดจริง: **กว้าง $b = {b_final:.0f}$ cm** และ **ลึก $h = {h_final:.0f}$ cm**")
+                st.latex(rf"S_{{prov}} = {S_prov:,.2f} \text{{ cm}}^3 \ge {S_req_final:,.2f} \text{{ (OK)}}")
+                st.latex(rf"I_{{prov}} = {I_prov:,.2f} \text{{ cm}}^4 \ge {I_req_final:,.2f} \text{{ (OK)}}")
 
 # ==========================================
 # TAB 2: คอนกรีตเสริมเหล็ก (RC Beam)
@@ -171,7 +198,6 @@ with tab2:
             P_rc = st.number_input("น้ำหนักกระทำจุดกึ่งกลาง P (kg)", min_value=1.0, value=6000.0, step=100.0, key="P_rc")
             
     with c4:
-        # ฐานข้อมูลเหล็กแกนหลักและเหล็กดีด (WSD วสท.)
         steel_dict = {
             "เหล็กเส้นกลม SR24 (ผิวเรียบ)": [1200.0, 2400.0],
             "เหล็กข้ออ้อย SD30": [1500.0, 3000.0],
@@ -184,16 +210,15 @@ with tab2:
         fc_prime = st.selectbox("กำลังอัดของคอนกรีต f'c ทรงกระบอก (ksc)", [180, 210, 240, 280, 320], index=1, key="fc_rc")
         ratio_rc = st.number_input("สัดส่วน ความลึก/ความกว้าง (h/b) ของคาน RC", min_value=1.5, value=2.0, step=0.5)
 
-        # คำนวณค่าคงที่ของทฤษฎี Working Stress Design (WSD) แท้จริง
         fc = 0.375 * fc_prime
         Ec = 15100 * math.sqrt(fc_prime)
         Es = 2.04e6
         n_ratio = round(Es / Ec)
         k_wsd = n_ratio / (n_ratio + (fs / fc))
-        j_wsd = 1.0 - (k_wsd / 3.0)
-        R_wsd = 0.5 * fc * k_wsd * j_wsd
+        j_val = 1.0 - (k_wsd / 3.0)
+        R_wsd = 0.5 * fc * k_wsd * j_val
         
-        st.info(f"**WSD Constants:** n = {n_ratio} | k = {k_wsd:.3f} | j = {j_wsd:.3f} | R = {R_wsd:.2f} ksc")
+        st.info(f"**WSD Constants:** n = {n_ratio} | k = {k_wsd:.3f} | j = {j_val:.3f} | R = {R_wsd:.2f} ksc\n\nหน่วยแรงดึงเหล็ก (fs): **{fs:,.0f} kg/cm²**")
 
     if st.button("🚀 ประเมินหน้าตัดและเหล็กเสริม (RC)", type="primary", key="btn_rc"):
         L_cm_rc = L_rc * 100
@@ -201,12 +226,17 @@ with tab2:
         auto_resized_rc = False
         max_iter_rc = 1000
         iter_rc_count = 0
-        h_rc = 20.0  # เริ่มต้นความลึกที่ 20 ซม.
+        
+        # ตัวแปรสำหรับทฤษฎีขั้นต่ำ (โชว์ใน Report)
+        h_min_theoretical = L_cm_rc / 10.0
+        b_min_theoretical = h_min_theoretical / ratio_rc
+        
+        h_rc = math.ceil(h_min_theoretical / 5.0) * 5
         
         while iter_rc_count < max_iter_rc:
             iter_rc_count += 1
             b_rc = math.ceil((h_rc / ratio_rc) / 5.0) * 5
-            if b_rc < 15: b_rc = 15.0 # หน้าตัดเสา/คานบ้านทั่วไปกว้างไม่ควรน้อยกว่า 15 ซม.
+            if b_rc < 15: b_rc = 15.0 
             
             w_self_rc = (b_rc / 100) * (h_rc / 100) * 2400
             
@@ -222,10 +252,8 @@ with tab2:
                 I_req_rc = ((P_rc * L_cm_rc**3) / (48 * Ec * delta_allow_rc)) + ((5 * (w_self_rc / 100) * L_cm_rc**4) / (384 * Ec * delta_allow_rc))
                 
             I_g = (b_rc * h_rc**3) / 12
-            d_rc = h_rc - 5.0 # ระยะคอนกรีตหุ้มเคลียร์ริ่งโดยประมาณ
-            
-            # ตรวจสอบโมเมนต์ยอมให้ด้านหน้าตัดคอนกรีตอัด (Balanced capacity control)
-            M_concrete_capacity = (R_wsd * b_rc * d_rc**2) / 100 # หน่วย kg-m
+            d_rc = h_rc - 5.0 
+            M_concrete_capacity = (R_wsd * b_rc * d_rc**2) / 100 
             
             if I_g >= I_req_rc and M_concrete_capacity >= M_total_rc:
                 if is_uniform_rc:
@@ -235,40 +263,35 @@ with tab2:
                 break
             else:
                 auto_resized_rc = True
-                h_rc += 5.0 # เพิ่มขนาดคาน RC ทีละ 5 ซม. ตามแบบสากลช่างก่อสร้าง
+                h_rc += 5.0 
                 
         if iter_rc_count >= max_iter_rc:
              st.error("⚠️ ไม่สามารถประเมินหน้าตัดคาน RC ได้เนื่องจากน้ำหนักกระทำสูงเกินเกณฑ์ขีดจำกัด")
         else:
-            # คำนวณหาพื้นที่เหล็กเสริมรับแรงดึงที่ต้องการ (As)
-            As_req = (M_total_rc * 100) / (fs * j_wsd * d_rc)
-            # เช็คปริมาณเหล็กเสริมต่ำสุดเพื่อต้านร้าว (Minimum Reinforcement Limit)
+            As_req = (M_total_rc * 100) / (fs * j_val * d_rc)
             As_min = (14.0 / fy) * b_rc * d_rc
             As_final = max(As_req, As_min)
             
             n_DB12 = math.ceil(As_final / 1.13)
             n_DB16 = math.ceil(As_final / 2.01)
-            n_DB20 = math.ceil(As_final / 3.14)
             
-            # --- ส่วนขยาย PRO: การออกแบบเหล็กปลอกรับแรงเฉือน (Stirrup Design) ---
-            v_v = V_max_rc / (b_rc * d_rc) # หน่วยแรงเฉือนที่เกิดขึ้นจริง (ksc)
-            v_c = 0.29 * math.sqrt(fc_prime) # หน่วยแรงเฉือนยอมให้สำหรับคอนกรีต
-            
+            v_v = V_max_rc / (b_rc * d_rc) 
+            v_c = 0.29 * math.sqrt(fc_prime) 
             stirrup_bar = "RB6" if h_rc <= 40 else "RB9"
-            Av = 2 * 0.283 if stirrup_bar == "RB6" else 2 * 0.636 # เหล็กปลอก 2 ขา (2-legs stirrup)
-            fv_stirrup = 1200.0 # เหล็กปลอก SR24
+            Av = 2 * 0.283 if stirrup_bar == "RB6" else 2 * 0.636
+            fv_stirrup = 1200.0
             
             if v_v <= v_c:
-                stirrup_text = f"คอนกรีตรับแรงเฉือนได้พอ แนะนำใส่เหล็กปลอกเหล็กเสริมกันร้าวขั้นต่ำ"
+                stirrup_text = f"คอนกรีตรับแรงเฉือนได้พอ แนะนำใส่เหล็กปลอกกันร้าว"
                 s_spacing = min(d_rc / 2, 30.0)
             else:
                 v_s = v_v - v_c
                 v_max_allow = 1.32 * math.sqrt(fc_prime)
                 if v_s > v_max_allow:
-                    stirrup_text = "⚠️ หน้าตัดเล็กเกินไปสำหรับแรงเฉือน กรุณาขยายขนาดคานเพิ่มด้วยตนเอง"
+                    stirrup_text = "⚠️ หน้าตัดเล็กเกินไปสำหรับแรงเฉือน"
                     s_spacing = 0
                 else:
-                    stirrup_text = f"ต้องเสริมเหล็กปลอกเพื่อช่วยรับแรงเฉือนส่วนเกิน"
+                    stirrup_text = f"ต้องเสริมเหล็กปลอกเพื่อช่วยรับแรงเฉือน"
                     s_spacing = (Av * fv_stirrup) / (v_s * b_rc)
                     s_spacing = min(s_spacing, d_rc / 2, 30.0)
             
@@ -277,21 +300,18 @@ with tab2:
             st.divider()
             st.header("📊 2. สรุปผลการประเมินคานคอนกรีตเสริมเหล็ก")
             if auto_resized_rc:
-                st.warning(f"🔄 **ระบบปรับขยายหน้าตัดเพิ่ม:** เนื่องจากขนาดเริ่มต้นไม่ผ่านเกณฑ์การยุบตัว หรือคอนกรีตเกิดหน่วยแรงอัดเกินพิกัด Balanced Design")
+                st.warning(f"🔄 **ระบบทำการปรับเพิ่มขนาดคาน:** เพื่อให้ค่าหน้าตัดผ่านเกณฑ์โมเมนต์ความเฉื่อย ($I_{{gross}}$) และกำลังของคอนกรีต")
                 
             st.success(f"### 📐 หน้าตัดคาน RC ที่แนะนำ: กว้าง {b_rc:.0f} ซม. × ลึก {h_rc:.0f} ซม.")
             
             c_out1, c_out2, c_out3 = st.columns(3)
             c_out1.metric("โมเมนต์ดัดรวม (M_total)", f"{M_total_rc:,.2f} kg-m")
-            c_out2.metric("พื้นที่เหล็กแกนดึงที่ต้องการ (As)", f"{As_final:,.2f} cm²", delta=f"เหล็กขั้นต่ำ {As_min:.2f} cm²")
-            c_out3.metric("ระยะแอ่นตัวสูงสุด", f"{delta_max_rc:,.3f} cm", delta=f"ยอมให้ {delta_allow_rc:,.2f} cm")
+            c_out2.metric("พื้นที่เหล็กแกนดึง (As)", f"{As_final:,.2f} cm²", delta=f"เหล็กขั้นต่ำ {As_min:.2f} cm²")
+            c_out3.metric("ระยะแอ่นตัวสูงสุด", f"{delta_max_rc:,.3f} cm", delta=f"ยอมให้ {delta_allow_rc:,.2f} cm", delta_color="normal")
             
-            st.info(f"**🛠️ ข้อเสนอแนะการจัดปริมาณเหล็กแกนหลัก:**\n- ใช้เหล็กข้ออ้อย **DB12** จำนวน **{max(2, n_DB12)} เส้น** หรือ\n- ใช้เหล็กข้ออ้อย **DB16** จำนวน **{max(2, n_DB16)} เส้น** หรือ\n- ใช้เหล็กข้ออ้อย **DB20** จำนวน **{max(2, n_DB20)} เส้น**")
-            
+            st.info(f"**🛠️ ปริมาณเหล็กเสริมหลัก:** แนะนำใช้ข้ออ้อย DB12 จำนวน {max(2, n_DB12)} เส้น หรือ DB16 จำนวน {max(2, n_DB16)} เส้น")
             if s_spacing_final > 0:
-                st.warning(f"**🛡️ การจัดเหล็กปลอกรับแรงเฉือน (Stirrup):** {stirrup_text} แนะนำใช้ **{stirrup_bar} @ {s_spacing_final} ซม.**")
-            else:
-                st.error(f"**🛡️ การจัดเหล็กปลอกรับแรงเฉือน (Stirrup):** {stirrup_text}")
+                st.warning(f"**🛡️ เหล็กปลอกรับแรงเฉือน:** {stirrup_text} ใช้ **{stirrup_bar} @ {s_spacing_final} ซม.**")
                 
             st.divider()
             st.header("📈 3. แผนภาพแรงเฉือนและโมเมนต์ดัด")
@@ -300,14 +320,33 @@ with tab2:
             cr1.plotly_chart(fig_v_rc, use_container_width=True)
             cr2.plotly_chart(fig_m_rc, use_container_width=True)
 
-            with st.expander("📝 ดูรายการคำนวณสูตรแปรผันอย่างละเอียด (WSD)"):
-                st.markdown("### 📌 ขั้นตอนวิเคราะห์กำลังหน้าตัดคอนกรีต")
-                st.markdown(f"หน่วยแรงอัดคอนกรีตยอมให้: $f_c = 0.375 \\times {fc_prime} = {fc:.2f}$ ksc")
-                st.markdown(f"คำนวณสัดส่วนค่า $k = {k_wsd:.3f}$ และค่า แขนของแรง $j = {j_wsd:.3f}$")
-                st.latex(rf"M_{{concrete}} = \frac{{R \cdot b \cdot d^2}}{{100}} = \frac{{{R_wsd:.2f} \cdot {b_rc} \cdot {d_rc}^2}}{{100}} = {M_concrete_capacity:,.2f} \text{{ kg-m}}")
-                st.latex(rf"A_s = \frac{{M \cdot 100}}{{f_s \cdot j \cdot d}} = {As_req:,.2f} \text{{ cm}}^2")
-                st.markdown(f"**การตรวจสอบแรงเฉือน:** แรงเฉือนสูงสุดที่เกิดขึ้นจริง $V_{{max}} = {V_max_rc:,.2f}$ kg")
-                st.latex(rf"v_v = \frac{{V_{{max}}}}{{b \cdot d}} = {v_v:.2f} \text{{ ksc}} \quad [v_c = {v_c:.2f} \text{{ ksc}}]")
-                
-            report_rc = f"--- RC BEAM DESIGN REPORT ---\nConcrete f'c: {fc_prime} ksc\nSteel Grade: {selected_steel}\nSpan: {L_rc} m\nRecommended Section: {b_rc:.0f}x{h_rc:.0f} cm\nRequired As: {As_final:.2f} cm2\nStirrup: {stirrup_bar} @ {s_spacing_final} cm"
-            st.download_button("💾 ดาวน์โหลดรายงานผลการคำนวณคาน RC", report_rc, file_name="RC_Beam_Report.txt")
+            # ================= กู้คืนและอัปเกรดรายการคำนวณของคุณ (Tab 2) =================
+            with st.expander("📝 ดูรายการคำนวณ: การหาความลึกขั้นต่ำ ปริมาณเหล็ก และแรงเฉือน"):
+                st.markdown("### 📌 ขั้นตอนที่ 1: หาความลึกขั้นต่ำของคอนกรีต (Minimum Required Section)")
+                st.markdown("ตามข้อกำหนดทางวิศวกรรม สำหรับคานช่วงเดียว เพื่อควบคุมไม่ให้เกิดการแอ่นตัวมากเกินไป สามารถอ้างอิงความลึกขั้นต่ำที่ $L/10$ ถึง $L/16$ (ในที่นี้อิง $L/10$):")
+                st.latex(rf"h_{{min}} = \frac{{L}}{{10}} = \frac{{{L_cm_rc}}}{{10}} = {h_min_theoretical:,.2f} \text{{ cm}}")
+                st.markdown(rf"กำหนดสัดส่วนความกว้าง $b \approx h/{ratio_rc} \implies b_{{min}} = {b_min_theoretical:,.2f}$ cm")
+
+                st.markdown("---")
+                st.markdown("### 📌 ขั้นตอนที่ 2: สรุปการเลือกหน้าตัด (Provided Section)")
+                st.markdown(f"ทำการปัดเลขให้ทำงานก่อสร้างได้จริงแบบลงตัว เลือกใช้: **กว้าง $b = {b_rc:.0f}$ cm** และ **ลึก $h = {h_rc:.0f}$ cm**")
+                st.markdown(f"ตรวจสอบโมเมนต์ความเฉื่อยเพื่อควบคุมการแอ่นตัว ($I_{{req}} = {I_req_rc:,.2f}$ cm$^4$):")
+                st.latex(rf"I_{{gross}} = \frac{{{b_rc:.0f} \cdot {h_rc:.0f}^3}}{{12}} = {I_g:,.2f} \text{{ cm}}^4 \ge I_{{req}} \text{{ (OK)}}")
+                st.markdown(f"ตรวจสอบกำลังต้านทานโมเมนต์อัดของคอนกรีต ($M_c = Rbd^2$):")
+                st.latex(rf"M_c = \frac{{{R_wsd:.2f} \cdot {b_rc:.0f} \cdot {d_rc}^2}}{{100}} = {M_concrete_capacity:,.2f} \text{{ kg-m}} \ge {M_total_rc:,.2f} \text{{ (OK)}}")
+
+                st.markdown("---")
+                st.markdown("### 📌 ขั้นตอนที่ 3: คำนวณหาพื้นที่เหล็กเสริมรับแรงดึง (Required Main Rebar)")
+                st.markdown(f"จากหน้าตัดที่เลือก และโมเมนต์ดัดรวม $M_{{total}} = {M_total_rc:,.2f}$ kg-m (ใช้วิธี Working Stress Design):")
+                st.latex(rf"d_{{prov}} = h - 5 = {h_rc:.0f} - 5 = {d_rc} \text{{ cm}}")
+                st.latex(rf"A_s = \frac{{M_{{max}} \cdot 100}}{{f_s \cdot j \cdot d}} = \frac{{{M_total_rc:,.2f} \cdot 100}}{{{fs:,.0f} \cdot {j_val:.3f} \cdot {d_rc}}} = {As_req:,.2f} \text{{ cm}}^2")
+
+                st.markdown("---")
+                st.markdown("### 📌 ขั้นตอนที่ 4: การตรวจสอบและออกแบบเหล็กปลอก (Shear Design)")
+                st.markdown(f"แรงเฉือนสูงสุดที่เกิดขึ้นจริง $V_{{max}} = {V_max_rc:,.2f}$ kg")
+                st.latex(rf"v_v = \frac{{V_{{max}}}}{{b \cdot d}} = \frac{{{V_max_rc:,.2f}}}{{{b_rc:.0f} \cdot {d_rc}}} = {v_v:.2f} \text{{ ksc}}")
+                st.latex(rf"v_c = 0.29\sqrt{{f'_c}} = 0.29\sqrt{{{fc_prime}}} = {v_c:.2f} \text{{ ksc}}")
+                if v_v > v_c:
+                    st.latex(rf"v_s = v_v - v_c = {v_v:.2f} - {v_c:.2f} = {v_s:.2f} \text{{ ksc}}")
+                    st.markdown(f"หน้าตัดคอนกรีตรับแรงเฉือนไม่พอ ต้องใช้เหล็กปลอกช่วยรับที่ระยะห่าง $S$:")
+                    st.latex(rf"S = \frac{{A_v \cdot f_v}}{{v_s \cdot b}} = \frac{{{Av:.3f} \cdot {fv_stirrup:,.0f}}}{{{v_s:.2f} \cdot {b_rc:.0f}}} = {s_spacing:.2f} \text{{ cm}} \implies \text{{ใช้ }} {s_spacing_final} \text{{ cm}}")
