@@ -40,6 +40,9 @@ tab1, tab2 = st.tabs(["🪵 เหล็กรูปพรรณ / ไม้", "
 # ==========================================
 # TAB 1: เหล็กรูปพรรณ และ ไม้
 # ==========================================
+# ==========================================
+# TAB 1: เหล็กรูปพรรณ และ ไม้
+# ==========================================
 with tab1:
     st.header("📝 1. ป้อนข้อมูลการออกแบบ (เหล็ก/ไม้)")
     design_mode_homo = st.radio("โหมดการออกแบบ (เหล็ก/ไม้)", ["🔍 คำนวณขนาดอัตโนมัติ (Auto-sizing)", "✍️ กำหนดขนาดเอง (Manual)"], horizontal=True, key="mode_homo")
@@ -67,19 +70,33 @@ with tab1:
         }
         selected_mat = st.selectbox("เลือกประเภทวัสดุ", list(mat_db.keys()), key="mat_homo")
         sigma_allow, density, E_val = mat_db[selected_mat]
-        Yield_stress = sigma_allow / 0.6  # ประมาณค่า Fy จาก Fb
-        tau_allow = 0.4 * Yield_stress    # Allowable shear stress
+        Yield_stress = sigma_allow / 0.6  
+        tau_allow = 0.4 * Yield_stress    
         
-        section_shape = st.selectbox("รูปแบบรูปทรงหน้าตัด", ["หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)", "หน้าตัดไวด์แฟลงก์ / เอชบีม (Wide Flange / H-Beam)"], key="shape_homo")
+        section_shape = st.selectbox("รูปแบบรูปทรงหน้าตัด", ["หน้าตัดไวด์แฟลงก์ / เอชบีม (Wide Flange / H-Beam)", "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)"], key="shape_homo")
         
+        # ตัวแปรเสริมสำหรับ Manual Mode
+        tw_manual, tf_manual = None, None 
+
         if "Auto" in design_mode_homo:
             ratio = st.number_input("สัดส่วน ความลึก/ความกว้าง (h/b)", min_value=1.0, value=2.0, step=0.5, key="ratio_homo")
             b_manual_homo, h_manual_homo = 0, 0
+            st.caption("💡 ระบบจะหาขนาดเชิงทฤษฎีที่เล็กที่สุดให้ โดยจำลองความหนา $t_f, t_w$ ตามสัดส่วนมาตรฐาน")
         else:
-            col_b, col_h = st.columns(2)
-            b_manual_homo = col_b.number_input("ความกว้าง b (cm)", min_value=1.0, value=15.0, step=1.0, key="b_manual_homo")
-            h_manual_homo = col_h.number_input("ความลึก h (cm)", min_value=1.0, value=30.0, step=1.0, key="h_manual_homo")
-            ratio = h_manual_homo / b_manual_homo if b_manual_homo > 0 else 2.0
+            if section_shape == "หน้าตัดไวด์แฟลงก์ / เอชบีม (Wide Flange / H-Beam)":
+                st.markdown("**ป้อนขนาดหน้าตัดจริง (สามารถเทียบจากตารางเหล็กได้)**")
+                c_sec1, c_sec2 = st.columns(2)
+                h_manual_homo = c_sec1.number_input("ความลึกคาน H (cm)", min_value=5.0, value=20.0, step=1.0)
+                b_manual_homo = c_sec2.number_input("ความกว้างปีก B (cm)", min_value=5.0, value=10.0, step=1.0)
+                c_sec3, c_sec4 = st.columns(2)
+                tw_manual = c_sec3.number_input("ความหนาเอว tw (mm)", min_value=1.0, value=5.5, step=0.5) / 10.0 # แปลงเป็น cm
+                tf_manual = c_sec4.number_input("ความหนาปีก tf (mm)", min_value=1.0, value=8.0, step=0.5) / 10.0 # แปลงเป็น cm
+                ratio = h_manual_homo / b_manual_homo if b_manual_homo > 0 else 2.0
+            else:
+                col_b, col_h = st.columns(2)
+                b_manual_homo = col_b.number_input("ความกว้าง b (cm)", min_value=1.0, value=15.0, step=1.0, key="b_manual_homo")
+                h_manual_homo = col_h.number_input("ความลึก h (cm)", min_value=1.0, value=30.0, step=1.0, key="h_manual_homo")
+                ratio = h_manual_homo / b_manual_homo if b_manual_homo > 0 else 2.0
 
         st.info(f"หน่วยแรงดัด (Fb): **{sigma_allow:,.0f} ksc** | แรงเฉือน (Fv): **{tau_allow:,.0f} ksc**")
     
@@ -91,21 +108,29 @@ with tab1:
         auto_resized = False
         is_safe = True
         
-        # ฟังก์ชันคำนวณหน้าตัด
-        def calc_section(b, h):
+        # ฟังก์ชันคำนวณหน้าตัดรองรับการระบุ tw, tf แบบ Manual
+        def calc_section(b, h, tw_val=None, tf_val=None):
             if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)":
                 w_s = (b / 100) * (h / 100) * density
                 I_p = (b * h**3) / 12
                 S_p = (b * h**2) / 6
-                tw, tf = 0, 0
+                out_tw, out_tf = 0, 0
             else:
-                tf = 0.06 * h
-                tw = 0.04 * h
-                area_cm2 = (2 * b * tf) + ((h - 2 * tf) * tw)
+                # ถ้าไม่ระบุค่ามา (Auto mode) ให้ประมาณการ
+                out_tf = tf_val if tf_val is not None else 0.06 * h
+                out_tw = tw_val if tw_val is not None else 0.04 * h
+                
+                # เช็คป้องกันค่าหนาเกินไปจนผิดปกติ
+                if 2 * out_tf >= h: out_tf = h * 0.4
+                if out_tw >= b: out_tw = b * 0.5
+                
+                area_cm2 = (2 * b * out_tf) + ((h - 2 * out_tf) * out_tw)
                 w_s = (area_cm2 / 10000) * density
-                I_p = (b * h**3 / 12) - ((b - tw) * (h - 2 * tf)**3 / 12)
+                
+                # คำนวณ I อย่างแม่นยำ (Moment of Inertia)
+                I_p = (b * h**3 / 12) - ((b - out_tw) * (h - 2 * out_tf)**3 / 12)
                 S_p = I_p / (h / 2)
-            return w_s, I_p, S_p, tw, tf
+            return w_s, I_p, S_p, out_tw, out_tf
 
         if "Auto" in design_mode_homo:
             h_final = 10.0  
@@ -129,7 +154,7 @@ with tab1:
                     is_safe = False; break
         else:
             b_final, h_final = b_manual_homo, h_manual_homo
-            w_self_actual, I_prov, S_prov, tw, tf = calc_section(b_final, h_final)
+            w_self_actual, I_prov, S_prov, tw, tf = calc_section(b_final, h_final, tw_manual, tf_manual)
             w_total_actual = val_load_homo + w_self_actual if is_uniform_homo else w_self_actual
             M_total = M_applied + (w_self_actual * L_homo**2) / 8
             
@@ -145,7 +170,7 @@ with tab1:
         S_req_final, I_req_final = S_req_iter, I_req_iter
         V_max_homo = (w_total_actual * L_homo / 2) if is_uniform_homo else ((P_homo / 2) + (w_self_actual * L_homo / 2))
         
-        # Check Shear for Wide Flange
+        # Check Shear for Wide Flange (ตรวจแรงเฉือนเอวคาน)
         fv_actual = V_max_homo / (h_final * tw) if tw > 0 else 0
         shear_safe = True if (tw == 0 or fv_actual <= tau_allow) else False
         if not shear_safe: is_safe = False
@@ -159,11 +184,11 @@ with tab1:
         st.header("📊 2. สรุปผลการประเมินหน้าตัดขั้นสุดท้าย")
         
         if not is_safe and "Manual" in design_mode_homo:
-            st.error(f"❌ **ขนาดที่กำหนดไม่ปลอดภัย!** อาจเกิดจากการรับโมเมนต์ดัด แอ่นตัว หรือแรงเฉือนเกินขีดจำกัด")
+            st.error(f"❌ **ขนาดหน้าตัด H-{h_final:.0f}x{b_final:.0f} ที่ระบุไม่ปลอดภัย!** อาจเกิดจากการรับแรงดัด (S ไม่พอ), การแอ่นตัวเกิน, หรือความหนาเอว (tw) ไม่เพียงพอรับแรงเฉือน")
         elif is_safe:
             st.success(f"### 📐 ขนาดที่ใช้: กว้าง {b_final:.0f} ซม. × ลึก {h_final:.0f} ซม.")
             if "Wide" in section_shape:
-                st.info(f"**รายละเอียดสัดส่วน Wide Flange (สมมติฐานเบื้องต้น):** ความหนาปีก (tf) = {tf:.2f} cm, ความหนาเอว (tw) = {tw:.2f} cm")
+                st.info(f"**รายละเอียดสัดส่วน Wide Flange:** H-{h_final*10:.0f}x{b_final*10:.0f}x{tw*10:.1f}x{tf*10:.1f} mm. | พื้นที่หน้าตัด (A) = {((2 * b_final * tf) + ((h_final - 2 * tf) * tw)):.2f} cm²")
         
         col_r1, col_r2, col_r3 = st.columns(3)
         col_r1.metric("โมเมนต์ดัดรวม (M_total)", f"{M_total:,.2f} kg-m")
@@ -179,19 +204,18 @@ with tab1:
 
         with st.expander("📝 ดูรายการคำนวณแบบละเอียด"):
             st.markdown(r"**1. ตรวจสอบพิกัดต้านทานการดัด (Section Modulus Check):**")
-            pass_S = "OK" if S_prov >= S_req_final else "NG"
+            pass_S = "OK" if S_prov >= S_req_final else "NG (เพิ่ม H หรือ tf)"
             st.latex(rf"S_{{prov}} ({S_prov:,.2f} \text{{ cm}}^3) \ge S_{{req}} ({S_req_final:,.2f} \text{{ cm}}^3) \implies \text{{{pass_S}}}")
             
             st.markdown(r"**2. ตรวจสอบพิกัดควบคุมการแอ่นตัว (Moment of Inertia Check):**")
-            pass_I = "OK" if I_prov >= I_req_final else "NG"
+            pass_I = "OK" if I_prov >= I_req_final else "NG (เพิ่ม H)"
             st.latex(rf"I_{{prov}} ({I_prov:,.2f} \text{{ cm}}^4) \ge I_{{req}} ({I_req_final:,.2f} \text{{ cm}}^4) \implies \text{{{pass_I}}}")
             
             if "Wide" in section_shape:
                 st.markdown(r"**3. ตรวจสอบหน่วยแรงเฉือนในเอวคาน (Web Shear Check):**")
                 st.latex(rf"f_v = \frac{{V_{{max}}}}{{h \cdot t_w}} = \frac{{{V_max_homo:,.2f}}}{{{h_final:.2f} \cdot {tw:.2f}}} = {fv_actual:,.2f} \text{{ ksc}}")
-                pass_V = "OK" if fv_actual <= tau_allow else "NG"
+                pass_V = "OK" if fv_actual <= tau_allow else "NG (เพิ่มความหนาเอว tw)"
                 st.latex(rf"f_v \le F_v ({tau_allow:,.2f} \text{{ ksc}}) \implies \text{{{pass_V}}}")
-
 # ==========================================
 # TAB 2: คอนกรีตเสริมเหล็ก (RC Beam)
 # ==========================================
