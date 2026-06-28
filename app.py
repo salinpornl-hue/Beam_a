@@ -181,9 +181,7 @@ with tab1:
                     st.markdown(rf"สูตร Section Modulus ของหน้าตัดสี่เหลี่ยมคือ $S = \frac{{bh^2}}{{6}}$ เมื่อแทนค่า $h = {ratio}b$ จะได้:")
                     st.latex(rf"S = \frac{{b \cdot ({ratio}b)^2}}{{6}} = \frac{{{ratio**2} \cdot b^3}}{{6}}")
                     st.markdown("ย้ายข้างสมการเพื่อหาค่า $b$ ที่ต้องการ:")
-                    # --- แก้ไขตรงนี้: ลดปีกกาปิดท้าย ratio**2 เหลือ 4 ตัว ---
-                    st.latex(rf"b \ge \sqrt[3]{{\frac{{6 \cdot S_{{req}}}}{{{ratio**2}}}}} \implies \sqrt[3]{{\frac{{6 \cdot {S_req_final:,.2f}}}}{{{ratio**2}}}}} \implies b \ge {b_min_bend_final:,.2f} \text{{ cm}}")
-
+                    st.latex(rf"b \ge \sqrt[3]{{\frac{{6 \cdot S_{{req}}}}{{{ratio**2}}}}} \implies \sqrt[3]{{\frac{{6 \cdot {S_req_final:,.2f}}}{{{ratio**2}}}}} \implies b \ge {b_min_bend_final:,.2f} \text{{ cm}}")
                     st.markdown(r"**2.2 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์การแอ่นตัว:**")
                     st.markdown(rf"สูตร Moment of Inertia ของหน้าตัดสี่เหลี่ยมคือ $I = \frac{{bh^3}}{{12}}$ เมื่อแทนค่า $h = {ratio}b$ จะได้:")
                     st.latex(rf"I = \frac{{b \cdot ({ratio}b)^3}}{{12}} = \frac{{{ratio**3} \cdot b^4}}{{12}}")
