@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Beam Design Pro", page_icon="🏗️", layout="wide")
 
 st.title("🏗️ โปรแกรมออกแบบขนาดคานเบื้องต้น (Pro Version)")
-st.markdown("ระบบวิเคราะห์หน้าตัดคาน พร้อมรายการคำนวณละเอียดแบบ (สูตร -> แทนค่า -> ผลลัพธ์)")
+st.markdown("ระบบวิเคราะห์หน้าตัดคาน พร้อมรายการคำนวณละเอียดแบบ (ทฤษฎีอธิบาย -> แทนค่า -> ผลลัพธ์)")
 st.divider()
 
 def plot_diagrams(L, w_total, P, is_uniform):
@@ -185,7 +185,7 @@ with tab1:
         cp1.plotly_chart(fig_v, use_container_width=True)
         cp2.plotly_chart(fig_m, use_container_width=True)
 
-        with st.expander("📝 ดูรายการคำนวณแบบละเอียด (สูตร -> แทนค่า -> ผลลัพธ์)"):
+        with st.expander("📝 ดูรายการคำนวณแบบละเอียด (ทฤษฎีอธิบาย -> แทนค่า -> ผลลัพธ์)"):
             st.markdown("### 📌 ขั้นตอนที่ 1: คำนวณแรงภายในคาน (Design Forces)")
             if is_uniform_homo:
                 st.latex(rf"M_{{max}} = \frac{{w_{{total}} L^2}}{{8}} = \frac{{{w_total_actual:,.2f} \cdot {L_homo}^2}}{{8}} = {M_total:,.2f} \text{{ kg-m}}")
@@ -195,19 +195,49 @@ with tab1:
                 st.latex(rf"V_{{max}} = \frac{{P}}{{2}} + \frac{{w_{{self}} L}}{{2}} = \frac{{{P_homo}}}{{2}} + \frac{{{w_self_actual:,.2f} \cdot {L_homo}}}{{2}} = {V_max_homo:,.2f} \text{{ kg}}")
             
             st.markdown("---")
-            st.markdown("### 📌 ขั้นตอนที่ 2: ความต้องการทางวิศวกรรมของหน้าตัด (Required Properties)")
-            st.markdown("**1. ความต้องการเพื่อต้านทานการดัด (Required Section Modulus):**")
-            st.latex(rf"S_{{req}} = \frac{{M_{{max}} \cdot 100}}{{F_b}} = \frac{{{M_total:,.2f} \cdot 100}}{{{sigma_allow:,.0f}}} = {S_req_final:,.2f} \text{{ cm}}^3")
+            st.markdown(r"### 📌 ขั้นตอนที่ 2: การหาค่าความต้องการของหน้าตัด (Required Section Properties)")
+            st.markdown(r"ในการออกแบบคาน หน้าตัดจะต้องมีขนาดใหญ่พอที่จะต้านทาน **โมเมนต์ดัด (Bending Moment)** ไม่ให้วัสดุเกิดความเค้นเกินขีดจำกัด และต้องมีสติฟเนส (Stiffness) มากพอที่จะต้านทาน **การแอ่นตัว (Deflection)** ไม่ให้เกินค่าที่มาตรฐานกำหนด")
             
-            st.markdown("**2. ความต้องการเพื่อควบคุมการแอ่นตัว (Required Moment of Inertia):**")
+            st.markdown(r"**2.1 ความต้องการเพื่อต้านทานการดัด (Bending Criteria):**")
+            st.markdown(r"จากทฤษฎีแรงดัด (Flexure Formula) หน่วยแรงดัดดึง/อัดสูงสุด คำนวณจาก $\sigma = \frac{M \cdot c}{I}$ และเนื่องจาก Section Modulus ถูกนิยามไว้ว่า $S = \frac{I}{c}$ สมการจึงเขียนได้เป็น $\sigma = \frac{M}{S}$")
+            st.markdown(r"ดังนั้น เพื่อไม่ให้หน่วยแรงที่เกิดขึ้นจริงเกินค่าความเค้นที่ยอมให้ ($\sigma_{allow}$) คานจึงต้องการค่า $S_{req}$ ขั้นต่ำดังนี้:")
+            st.latex(rf"S_{{req}} = \frac{{M_{{max}} \cdot 100 \text{{ (แปลงหน่วย)}}}}{{F_b}} = \frac{{{M_total:,.2f} \cdot 100}}{{{sigma_allow:,.0f}}} = {S_req_final:,.2f} \text{{ cm}}^3")
+            
+            st.markdown(r"**2.2 ความต้องการเพื่อควบคุมการแอ่นตัว (Deflection Criteria):**")
+            st.markdown(r"มาตรฐานทางวิศวกรรมทั่วไปกำหนดให้คานรับน้ำหนักใช้งาน (Service Load) แอ่นตัวได้สูงสุดไม่เกิน $L/360$ ของความยาวช่วงคาน:")
             st.latex(rf"\Delta_{{allow}} = \frac{{L}}{{360}} = \frac{{{L_cm:,.0f}}}{{360}} = {delta_allow:,.3f} \text{{ cm}}")
+            
+            st.markdown(r"จากสมการการแอ่นตัวของคาน (Elastic Curve) เราสามารถย้ายข้างสมการเพื่อหาค่าโมเมนต์ความเฉื่อย ($I_{req}$) ขั้นต่ำที่สอดคล้องกับ $\Delta_{allow}$ ได้:")
             if is_uniform_homo:
-                st.latex(rf"I_{{req}} = \frac{{5 \cdot w \cdot L^4}}{{384 \cdot E \cdot \Delta}} = \frac{{5 \cdot ({w_total_actual:,.2f}/100) \cdot {L_cm:,.0f}^4}}{{384 \cdot {E_val:,.0f} \cdot {delta_allow:,.3f}}} = {I_req_final:,.2f} \text{{ cm}}^4")
+                st.markdown(r"- กรณี **น้ำหนักแผ่กระจายสม่ำเสมอ (Uniform Load):** สูตรการแอ่นตัวสูงสุดคือ $\Delta = \frac{5wL^4}{384EI}$")
+                st.latex(rf"I_{{req}} = \frac{{5 \cdot w_{{total}} \cdot L^4}}{{384 \cdot E \cdot \Delta_{{allow}}}} = \frac{{5 \cdot ({w_total_actual:,.2f}/100) \cdot {L_cm:,.0f}^4}}{{384 \cdot {E_val:,.0f} \cdot {delta_allow:,.3f}}} = {I_req_final:,.2f} \text{{ cm}}^4")
             else:
-                st.latex(rf"I_{{req}} = \left(\frac{{P L^3}}{{48 E \Delta}}\right) + \left(\frac{{5 w L^4}}{{384 E \Delta}}\right) = \left(\frac{{{P_homo:,.0f} \cdot {L_cm:,.0f}^3}}{{48 \cdot {E_val:,.0f} \cdot {delta_allow:,.3f}}}\right) + \left(\frac{{5 \cdot ({w_self_actual:,.2f}/100) \cdot {L_cm:,.0f}^4}}{{384 \cdot {E_val:,.0f} \cdot {delta_allow:,.3f}}}\right) = {I_req_final:,.2f} \text{{ cm}}^4")
+                st.markdown(r"- กรณี **น้ำหนักกระทำเป็นจุดกึ่งกลาง (Point Load) + น้ำหนักคาน (Uniform):** ใช้หลักการ Superposition $\Delta = \frac{PL^3}{48EI} + \frac{5w_{self}L^4}{384EI}$")
+                st.latex(rf"I_{{req}} = \left(\frac{{P L^3}}{{48 E \Delta_{{allow}}}}\right) + \left(\frac{{5 w_{{self}} L^4}}{{384 E \Delta_{{allow}}}}\right) = \left(\frac{{{P_homo:,.0f} \cdot {L_cm:,.0f}^3}}{{48 \cdot {E_val:,.0f} \cdot {delta_allow:,.3f}}}\right) + \left(\frac{{5 \cdot ({w_self_actual:,.2f}/100) \cdot {L_cm:,.0f}^4}}{{384 \cdot {E_val:,.0f} \cdot {delta_allow:,.3f}}}\right) = {I_req_final:,.2f} \text{{ cm}}^4")
+
+            if section_shape == "หน้าตัดสี่เหลี่ยมตัน (Solid Rectangle)":
+                b_min_bend_final = math.pow((6 * S_req_final) / (ratio**2), 1/3) 
+                b_min_def_final = math.pow((12 * I_req_final) / (ratio**3), 0.25) 
+                b_req_theoretical = max(b_min_bend_final, b_min_def_final)
+                h_req_theoretical = b_req_theoretical * ratio
+                
+                st.markdown("---")
+                st.markdown(r"### 📌 ขั้นตอนที่ 3: การถอดสมการหาความกว้าง (b) และความลึก (h) ขั้นต่ำสุดทางทฤษฎี")
+                st.markdown(rf"เมื่อเราทราบว่าหน้าตัดเป็นรูปสี่เหลี่ยมตัน และได้กำหนดสัดส่วนความลึกต่อความกว้างไว้เป็น $h = {ratio}b$ เราสามารถนำสัดส่วนนี้ไปแทนค่าในสูตรคุณสมบัติหน้าตัด เพื่อจัดรูปสมการหาค่าความกว้าง $b$ ขั้นต่ำได้ดังนี้:")
+                
+                st.markdown(r"**3.1 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์โมเมนต์ดัด:**")
+                st.markdown(rf"สูตร Section Modulus ของหน้าตัดสี่เหลี่ยมคือ $S = \frac{{bh^2}}{{6}}$ เมื่อแทนค่า $h = {ratio}b$ จะได้ $S = \frac{{{ratio**2} \cdot b^3}}{{6}}$ ย้ายข้างสมการเพื่อหา $b$:")
+                st.latex(rf"b \ge \sqrt[3]{{\frac{{6 \cdot S_{{req}}}}{{{ratio**2}}}}} \implies \sqrt[3]{{\frac{{6 \cdot {S_req_final:,.2f}}}{{{ratio**2}}}}} \implies b \ge {b_min_bend_final:,.2f} \text{{ cm}}")
+
+                st.markdown(r"**3.2 ขนาดหน้าตัดขั้นต่ำจากเกณฑ์การแอ่นตัว:**")
+                st.markdown(rf"สูตร Moment of Inertia ของหน้าตัดสี่เหลี่ยมคือ $I = \frac{{bh^3}}{{12}}$ เมื่อแทนค่า $h = {ratio}b$ จะได้ $I = \frac{{{ratio**3} \cdot b^4}}{{12}}$ ย้ายข้างสมการเพื่อหา $b$:")
+                st.latex(rf"b \ge \sqrt[4]{{\frac{{12 \cdot I_{{req}}}}{{{ratio**3}}}}} \implies \sqrt[4]{{\frac{{12 \cdot {I_req_final:,.2f}}}{{{ratio**3}}}}} \implies b \ge {b_min_def_final:,.2f} \text{{ cm}}")
+                
+                st.markdown(rf"**สรุปการหาค่าตามทฤษฎี:** ต้องเลือกค่า $b$ ที่สูงกว่า เพื่อให้หน้าตัดผ่านทั้งสองเกณฑ์ $\implies b_{{min}} = {b_req_theoretical:,.2f}$ cm")
+                st.markdown(rf"และเมื่อนำไปหาค่าความลึก จะได้ $h_{{min}} = {ratio} \times {b_req_theoretical:,.2f} = {h_req_theoretical:,.2f}$ cm")
 
             st.markdown("---")
-            st.markdown("### 📌 ขั้นตอนที่ 3: ตรวจสอบหน้าตัดใช้งาน (Section Verification)")
+            st.markdown("### 📌 ขั้นตอนที่ 4: สรุปการตรวจสอบหน้าตัดใช้งาน (Section Verification)")
             pass_S = "OK (ปลอดภัย)" if S_prov >= S_req_final else "NG (ไม่ผ่าน)"
             st.markdown(f"**1. ตรวจสอบพิกัดต้านทานการดัด ($S_{{prov}} = {S_prov:,.2f}$ cm³):**")
             st.latex(rf"S_{{prov}} \ge S_{{req}} \implies {S_prov:,.2f} \ge {S_req_final:,.2f} \implies \text{{{pass_S}}}")
@@ -389,7 +419,7 @@ with tab2:
                 if s_spacing_final > 0:
                     st.warning(f"**🛡️ เหล็กปลอกรับแรงเฉือน:** {stirrup_text} ใช้ **{stirrup_bar} @ {s_spacing_final} ซม.**")
 
-            with st.expander("📝 ดูรายการคำนวณ RC เจาะลึก (สูตร -> แทนค่า -> ผลลัพธ์)"):
+            with st.expander("📝 ดูรายการคำนวณ RC เจาะลึก (ทฤษฎีอธิบาย -> แทนค่า -> ผลลัพธ์)"):
                 st.markdown("### 📌 ขั้นตอนที่ 1: คำนวณแรงภายในคาน (Design Forces)")
                 if is_uniform_rc:
                     st.latex(rf"M_{{max}} = \frac{{w_{{total}} L^2}}{{8}} = \frac{{{w_total_rc:,.2f} \cdot {L_rc}^2}}{{8}} = {M_total_rc:,.2f} \text{{ kg-m}}")
@@ -408,13 +438,15 @@ with tab2:
                 st.latex(rf"M_c \ge M_{{max}} \implies {M_concrete_capacity:,.2f} \ge {M_total_rc:,.2f} \implies \text{{{pass_Mc}}}")
 
                 st.markdown("---")
-                st.markdown("### 📌 ขั้นตอนที่ 3: ออกแบบปริมาณเหล็กเสริมรับแรงดึง (Main Reinforcement)")
+                st.markdown("### 📌 ขั้นตอนที่ 3: คำนวณหาพื้นที่เหล็กเสริมรับแรงดึง (Required Main Rebar)")
+                st.markdown(f"จากหน้าตัดที่เลือก และโมเมนต์ดัดรวม $M_{{total}} = {M_total_rc:,.2f}$ kg-m (ใช้วิธี Working Stress Design):")
                 st.latex(rf"A_s = \frac{{M_{{max}} \cdot 100}}{{f_s \cdot j \cdot d}} = \frac{{{M_total_rc:,.2f} \cdot 100}}{{{fs:,.0f} \cdot {j_val:.3f} \cdot {d_rc:.2f}}} = {As_req:,.2f} \text{{ cm}}^2")
                 st.latex(rf"A_{{s,min}} = \frac{{14}}{{F_y}} \cdot b_w \cdot d = \frac{{14}}{{{fy:,.0f}}} \cdot {bw_rc:.0f} \cdot {d_rc:.2f} = {As_min:,.2f} \text{{ cm}}^2")
                 st.latex(rf"A_{{s,use}} = \max(A_s, A_{{s,min}}) = {As_final:,.2f} \text{{ cm}}^2")
 
                 st.markdown("---")
-                st.markdown("### 📌 ขั้นตอนที่ 4: การตรวจสอบแรงเฉือนและเหล็กปลอก (Shear Design)")
+                st.markdown("### 📌 ขั้นตอนที่ 4: การตรวจสอบและออกแบบเหล็กปลอก (Shear Design)")
+                st.markdown(f"แรงเฉือนสูงสุดที่เกิดขึ้นจริง $V_{{max}} = {V_max_rc:,.2f}$ kg")
                 st.latex(rf"v_v = \frac{{V_{{max}}}}{{b_w \cdot d}} = \frac{{{V_max_rc:,.2f}}}{{{bw_rc:.0f} \cdot {d_rc:.2f}}} = {v_v:.2f} \text{{ ksc}}")
                 st.latex(rf"v_c = 0.29\sqrt{{f'_c}} = 0.29\sqrt{{{fc_prime}}} = {v_c:.2f} \text{{ ksc}}")
                 
